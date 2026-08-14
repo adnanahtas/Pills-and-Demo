@@ -373,13 +373,50 @@ def parse_gs1(raw: str) -> dict:
                 name, _max = GS1_VARIABLE[ai]
                 pos += ai_len
                 # Read until GS separator or end-of-string
-                end = s.find(GS1_SEPARATOR, pos)
-                val = s[pos:end] if end != -1 else s[pos:]
-                pos = (end + 1) if end != -1 else n
+                gs_end = s.find(GS1_SEPARATOR, pos)
+                candidate = s[pos:gs_end] if gs_end != -1 else s[pos:]
+                # Even without a GS separator, stop when a known AI appears
+                # e.g. serial "05747877...17262312 10AB12" — 17 and 10 are AIs
+                all_ais = set(GS1_FIXED.keys()) | set(GS1_VARIABLE.keys())
+                cut = len(candidate)
+                for look in range(1, len(candidate)):
+                    found_cut = False
+                    for al in (4, 3, 2):
+                        if look + al > len(candidate):
+                            continue
+                        maybe_ai = candidate[look:look + al]
+                        if maybe_ai not in all_ais:
+                            continue
+                        # Validate fixed-length AIs: must have enough chars and
+                        # for expiry (17) the month must be 01-12
+                        if maybe_ai in GS1_FIXED:
+                            _, flen = GS1_FIXED[maybe_ai]
+                            after = candidate[look + al:]
+                            if len(after) < flen:
+                                continue   # not enough data → not a real AI here
+                            if maybe_ai == "17":
+                                mm = after[2:4]
+                                if not mm.isdigit() or not (1 <= int(mm) <= 12):
+                                    continue   # invalid month → false match
+                            if maybe_ai == "11":
+                                mm = after[2:4]
+                                if not mm.isdigit() or not (1 <= int(mm) <= 12):
+                                    continue
+                        cut = look
+                        found_cut = True
+                        break
+                    if found_cut:
+                        break
+                val = candidate[:cut]
+                # advance pos: if GS separator was found and cut == full candidate, consume the GS too
+                if gs_end != -1 and cut == len(candidate):
+                    pos = gs_end + 1
+                else:
+                    pos = pos + cut
                 # Store
-                if name == "lot":    result["lot"]    = val
+                if name == "lot":      result["lot"]    = val
                 elif name == "serial": result["serial"] = val
-                else:                result["extra"][ai] = val
+                else:                  result["extra"][ai] = val
                 matched = True
                 break
 
