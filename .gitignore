@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+*.onnx
+models/
+sessions.json
+each_sessions.json
+box_sessions.json
+*.pem
+.env

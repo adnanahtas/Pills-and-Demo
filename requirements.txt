@@ -1,0 +1,19 @@
+# Pill Detection AI — dependencies
+# Install with:  pip install -r requirements.txt
+#
+# RunPod / Linux (CUDA):   uses onnxruntime-gpu  (below)
+# Windows local dev (no CUDA): replace with onnxruntime-directml
+#   pip install onnxruntime-directml
+#
+# pylibdmtx needs the native libdmtx library:
+#   Ubuntu/RunPod:  apt-get install -y libdmtx-dev
+#   Windows:        ships with the wheel
+
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+onnxruntime-gpu>=1.17.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+python-multipart>=0.0.6
+pyzbar>=0.1.9
+pylibdmtx>=0.1.10

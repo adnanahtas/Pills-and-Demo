@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<title>QicScan</title>
+<style>
+/* ── Reset ── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+/* ── Design tokens — light mode with QicScan brand ── */
+:root{
+  /* Brand */
+  --orange:#E8510A;--blue:#2C5F8A;--orange-lt:#FFF0EB;--blue-lt:#EBF3FB;
+  /* Surface */
+  --bg:#F5F7FA;--bg2:#FFFFFF;--surf:#FFFFFF;--surf2:#F0F4F8;
+  /* Border */
+  --border:#DDE3EC;--border2:#C8D4E3;
+  /* Text */
+  --text:#1A2535;--muted:#6B7A92;--muted2:#9AA5B4;
+  /* Semantic */
+  --green:#0F9D58;--green-lt:#E6F4ED;
+  --red:#D93025;--red-lt:#FCE8E6;
+  --amber:#F57C00;--amber-lt:#FFF3E0;
+  --purple:#7B2FBE;--purple-lt:#F3E8FF;
+  /* Layout */
+  --hdr:60px;--nav:60px;--radius:12px;
+  /* Shadows */
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --shadow:0 4px 12px rgba(0,0,0,.10),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 30px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.07);
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font-family:inherit}
+#video{display:none}
+body{display:flex;flex-direction:column}
+
+/* ═══════════════════════════ HEADER ═══════════════════════════ */
+header{
+  height:var(--hdr);flex-shrink:0;display:flex;align-items:center;
+  justify-content:space-between;padding:0 18px;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow-sm);z-index:30;
+}
+.logo-img{height:32px;object-fit:contain}
+.status-pill{display:flex;align-items:center;gap:6px;padding:5px 13px;
+  border-radius:20px;font-size:.72rem;font-weight:600;
+  border:1.5px solid var(--border);background:var(--surf2);color:var(--muted);
+  white-space:nowrap;box-shadow:var(--shadow-sm)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted2);flex-shrink:0;transition:background .3s}
+.dot.live{background:var(--green);box-shadow:0 0 0 3px var(--green-lt);animation:blink 1.6s infinite}
+.dot.connecting{background:var(--amber);animation:blink .7s infinite}
+.dot.error{background:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ═══════════════════════════ LANDING PAGE ═══════════════════════════ */
+#pageLanding{
+  align-items:center;justify-content:center;
+  padding:24px 20px;gap:32px;background:var(--bg);overflow-y:auto;
+}
+.landing-logo{display:flex;flex-direction:column;align-items:center;gap:10px}
+.landing-logo img{height:48px;object-fit:contain}
+.landing-tagline{font-size:.85rem;color:var(--muted);font-weight:500;text-align:center;
+  letter-spacing:.02em}
+.module-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:420px}
+.module-card{
+  background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;
+  padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;
+  text-align:center;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s;
+  box-shadow:var(--shadow-sm);
+}
+.module-card:hover{border-color:var(--orange);box-shadow:var(--shadow);transform:translateY(-2px)}
+.module-card:active{transform:scale(.97)}
+.module-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;
+  justify-content:center;font-size:24px;flex-shrink:0}
+.module-icon.pill{background:var(--orange-lt)}
+.module-icon.each{background:var(--blue-lt)}
+.module-title{font-size:.9rem;font-weight:700;color:var(--text)}
+.module-desc{font-size:.72rem;color:var(--muted);line-height:1.45}
+.module-badge{font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;
+  background:var(--orange-lt);color:var(--orange);border:1px solid rgba(232,81,10,.2)}
+.module-badge.blue{background:var(--blue-lt);color:var(--blue);border-color:rgba(44,95,138,.2)}
+.module-badge.green{background:var(--green-lt);color:var(--green);border-color:rgba(15,157,88,.2)}
+.module-icon.box{background:var(--green-lt)}
+
+/* ═══════════════════════════ VIEW PAGES ═══════════════════════════ */
+.view-page{flex:1;overflow:hidden;display:none!important;flex-direction:column;min-height:0}
+.view-page.active{display:flex!important}
+#pillUploadPage.active{overflow-y:auto}
+#pillHistoryPage.active{overflow:hidden}
+/* Top-level pages only — sub-pages inside modules inherit from parent */
+.top-page{flex:1;overflow:hidden;display:none;flex-direction:column;min-height:0}
+.top-page.active{display:flex}
+
+/* ── Sub-header (back bar) ── */
+.sub-header{
+  flex-shrink:0;height:48px;display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+}
+.btn-back{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;
+  border:1.5px solid var(--border);background:var(--surf2);color:var(--muted);
+  font-size:.78rem;font-weight:600;transition:background .2s}
+.btn-back:hover{background:var(--border)}
+.sub-title{font-size:.9rem;font-weight:700;color:var(--text)}
+.sub-badge{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:auto}
+.sub-badge.orange{background:var(--orange-lt);color:var(--orange)}
+.sub-badge.blue{background:var(--blue-lt);color:var(--blue)}
+
+/* ═══════════════════════════ PILL — LIVE ═══════════════════════════ */
+.camera-wrap{flex:1;position:relative;background:#0a0f1a;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;min-height:0}
+#liveCanvas{max-width:100%;max-height:100%;display:block}
+.hud{position:absolute;top:10px;left:10px;display:flex;gap:5px;pointer-events:none;flex-wrap:wrap}
+.chip{padding:4px 9px;border-radius:6px;font-size:.64rem;font-weight:700;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid}
+.chip-fps{background:rgba(0,0,0,.55);border-color:rgba(232,81,10,.6);color:#FF7A3D}
+.chip-count{background:rgba(0,0,0,.55);border-color:rgba(15,157,88,.6);color:#4AE88A}
+.chip-peak{background:rgba(0,0,0,.55);border-color:rgba(123,47,190,.5);color:#B87DFF}
+.chip-conf{background:rgba(0,0,0,.55);border-color:rgba(245,124,0,.5);color:#FFB84D}
+#placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;
+  background:linear-gradient(135deg,#0d1829 0%,#0a1520 100%)}
+.ph-icon{font-size:3rem;opacity:.25}
+.ph-hint{font-size:.85rem;color:rgba(255,255,255,.4);font-weight:500}
+.ph-hint strong{color:var(--orange)}
+
+/* ── Pill controls bar ── */
+.ctrl-bar{
+  flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);
+  padding:10px 14px 13px;display:flex;flex-direction:column;gap:10px;
+  box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+.bar-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lbl{font-size:.71rem;color:var(--muted);font-weight:600;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:80px;max-width:160px;
+  height:5px;border-radius:3px;background:var(--border2);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;
+  border-radius:50%;background:var(--orange);cursor:pointer;
+  box-shadow:0 0 0 3px rgba(232,81,10,.2)}
+.sval{font-size:.8rem;font-weight:700;color:var(--orange);min-width:34px}
+select{background:var(--surf2);color:var(--text);border:1.5px solid var(--border);
+  border-radius:8px;padding:5px 10px;font-size:.73rem;cursor:pointer;outline:none}
+.btn-row{display:flex;gap:8px}
+.btn{flex:1;padding:12px 8px;border-radius:10px;border:none;font-size:.86rem;
+  font-weight:700;transition:opacity .2s,transform .12s,box-shadow .2s;
+  outline:none;touch-action:manipulation}
+.btn:active{transform:scale(.96)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.btn-start{background:linear-gradient(135deg,var(--orange),#C23D00);color:#fff;box-shadow:0 4px 12px rgba(232,81,10,.3)}
+.btn-stop{background:var(--red-lt);border:1.5px solid rgba(217,48,37,.35);color:var(--red)}
+.btn-save{background:var(--purple-lt);border:1.5px solid rgba(123,47,190,.35);color:var(--purple)}
+
+/* ═══════════════════════════ PILL — HISTORY ═══════════════════════════ */
+.hist-wrap{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.hist-topbar{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hist-title{font-size:.9rem;font-weight:700;color:var(--blue)}
+.btn-clear{padding:5px 12px;border-radius:8px;border:1.5px solid rgba(217,48,37,.3);
+  background:var(--red-lt);color:var(--red);font-size:.72rem;font-weight:600}
+.hist-empty{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;color:var(--muted);font-size:.85rem}
+.hist-empty-icon{font-size:2.5rem;opacity:.3}
+.session-card{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:13px 15px;display:flex;flex-direction:column;gap:7px;
+  transition:border-color .2s,box-shadow .2s;box-shadow:var(--shadow-sm)}
+.session-card:hover{border-color:var(--orange);box-shadow:var(--shadow)}
+.sc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sc-count{font-size:1.7rem;font-weight:800;color:var(--orange);line-height:1}
+.sc-peak{font-size:.7rem;color:var(--purple);margin-top:2px;font-weight:600}
+.sc-note{font-size:.8rem;font-weight:600;color:var(--text);flex:1;word-break:break-word}
+.sc-note.empty{color:var(--muted);font-style:italic}
+.btn-del{width:30px;height:30px;border-radius:8px;border:none;flex-shrink:0;
+  background:var(--red-lt);color:var(--red);font-size:13px;display:flex;
+  align-items:center;justify-content:center;transition:background .2s}
+.btn-del:hover{background:rgba(217,48,37,.2)}
+.sc-meta{display:flex;gap:8px;flex-wrap:wrap}
+.sc-tag{font-size:.64rem;padding:2px 8px;border-radius:5px;font-weight:600;border:1px solid}
+.tag-conf{border-color:rgba(245,124,0,.3);color:var(--amber);background:var(--amber-lt)}
+.tag-fps{border-color:rgba(44,95,138,.3);color:var(--blue);background:var(--blue-lt)}
+.tag-time{border-color:var(--border);color:var(--muted);background:transparent}
+
+/* ═══════════════════════════ EACH SORTING ═══════════════════════════ */
+#pageEach{background:#0a0f1a;position:relative}
+
+/* Camera fills all space behind the sheet */
+.each-cam-wrap{
+  position:absolute;inset:0;
+  background:#0a0f1a;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+#eachVideo{width:100%;height:100%;object-fit:cover;display:block}
+#eachCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.each-cam-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;
+  background:linear-gradient(135deg,#0d1829 0%,#0a1520 100%)}
+.each-ph-icon{font-size:3rem;opacity:.22}
+.each-ph-txt{font-size:.85rem;color:rgba(255,255,255,.38);font-weight:500}
+
+/* Scanning spinner overlay */
+.scan-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:20}
+.scan-overlay.show{display:flex}
+.spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.15);
+  border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan-overlay-txt{color:#fff;font-size:.84rem;font-weight:600}
+
+/* ── Bottom Sheet ── */
+.bottom-sheet{
+  position:absolute;left:0;right:0;bottom:0;
+  background:var(--bg2);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -6px 32px rgba(0,0,0,.22);
+  z-index:30;
+  display:flex;flex-direction:column;
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  /* default: peeking — just the handle + controls visible */
+  --sheet-peek:130px;
+  --sheet-full:82vh;
+  transform:translateY(calc(100% - var(--sheet-peek)));
+  max-height:var(--sheet-full);
+  touch-action:none;
+}
+.bottom-sheet.open{
+  transform:translateY(0);
+}
+.sheet-handle-area{
+  flex-shrink:0;display:flex;flex-direction:column;align-items:center;
+  padding:10px 16px 0;cursor:grab;
+}
+.sheet-handle{
+  width:40px;height:5px;border-radius:3px;
+  background:var(--border2);margin-bottom:8px;
+}
+.sheet-tab-row{
+  flex-shrink:0;display:flex;width:100%;gap:0;
+  border-bottom:1px solid var(--border);
+}
+.sheet-tab{
+  flex:1;padding:9px 4px;border:none;background:transparent;
+  font-size:.74rem;font-weight:700;color:var(--muted);
+  border-bottom:2px solid transparent;cursor:pointer;
+  transition:color .2s,border-color .2s;
+}
+.sheet-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+/* Controls row inside sheet */
+.each-controls{
+  flex-shrink:0;padding:10px 12px;
+  display:flex;gap:8px;
+}
+.btn-each{flex:1;padding:11px 6px;border-radius:10px;border:none;font-size:.8rem;
+  font-weight:700;transition:transform .12s,box-shadow .2s;touch-action:manipulation;outline:none}
+.btn-each:active{transform:scale(.96)}
+.btn-each:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.btn-cam-start{background:linear-gradient(135deg,var(--blue),#1E4A72);color:#fff;box-shadow:0 3px 10px rgba(44,95,138,.35)}
+.btn-scan{background:linear-gradient(135deg,var(--orange),#C23D00);color:#fff;box-shadow:0 3px 10px rgba(232,81,10,.35)}
+.btn-each-save{background:var(--green-lt);border:1.5px solid rgba(15,157,88,.35);color:var(--green)}
+.btn-each-clear{background:var(--red-lt);border:1.5px solid rgba(217,48,37,.3);color:var(--red)}
+
+/* Sheet content */
+.sheet-content{flex:1;overflow-y:auto;overscroll-behavior:contain;}
+.sheet-pane{display:none;flex-direction:column;gap:12px;padding:14px 16px 24px;}
+.sheet-pane.active{display:flex;}
+
+/* Annotated image */
+.annotated-wrap{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+  background:#000;flex-shrink:0;position:relative}
+.annotated-wrap img{width:100%;display:block}
+.annotated-label{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);
+  color:#fff;font-size:.65rem;font-weight:700;padding:3px 9px;border-radius:6px;
+  backdrop-filter:blur(6px)}
+
+/* Summary stat bar */
+.stat-bar{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.stat-chip{flex:1;min-width:72px;background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:10px;padding:9px 10px;text-align:center;box-shadow:var(--shadow-sm)}
+.stat-num{font-size:1.25rem;font-weight:800;color:var(--orange)}
+.stat-lbl{font-size:.6rem;color:var(--muted);font-weight:600;margin-top:1px}
+
+/* Expiry group colour bar */
+.expiry-color-bar{
+  display:flex;gap:6px;flex-wrap:wrap;padding:2px 0;
+}
+.ecb-chip{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 11px;border-radius:20px;
+  font-size:.72rem;font-weight:700;
+  color:#fff;box-shadow:var(--shadow-sm);
+}
+.ecb-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.6);flex-shrink:0}
+
+/* Expiry group cards */
+.grp-section-title{font-size:.75rem;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;padding:0 2px}
+.group-card{background:var(--bg2);border-radius:var(--radius);border-left:4px solid;
+  overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .2s}
+.group-card:hover{box-shadow:var(--shadow)}
+.group-header{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer}
+.group-color-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0}
+.group-expiry{font-size:.88rem;font-weight:700;color:var(--text);flex:1}
+.group-count-badge{font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px}
+.group-chevron{font-size:.7rem;color:var(--muted);transition:transform .2s}
+.group-chevron.open{transform:rotate(180deg)}
+.group-body{border-top:1px solid var(--border);padding:0 14px;max-height:0;overflow:hidden;
+  transition:max-height .35s ease,padding .3s ease}
+.group-body.open{max-height:800px;padding:10px 14px 12px}
+.each-item-row{display:flex;flex-direction:column;gap:3px;padding:8px 0;
+  border-bottom:1px solid var(--border)}
+.each-item-row:last-child{border-bottom:none}
+.each-item-label{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.each-item-val{font-size:.8rem;font-weight:600;color:var(--text);font-family:Consolas,monospace;word-break:break-all}
+.each-item-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* Each history */
+.each-hist-card{background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:13px 15px;display:flex;flex-direction:column;
+  gap:8px;box-shadow:var(--shadow-sm);transition:border-color .2s,box-shadow .2s}
+.each-hist-card:hover{border-color:var(--blue);box-shadow:var(--shadow)}
+.ehc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ehc-total{font-size:1.5rem;font-weight:800;color:var(--blue);line-height:1}
+.ehc-note{font-size:.8rem;font-weight:600;color:var(--text);flex:1;word-break:break-word}
+.ehc-note.empty{color:var(--muted);font-style:italic}
+.ehc-grps{display:flex;gap:6px;flex-wrap:wrap}
+.ehc-grp-tag{font-size:.64rem;padding:3px 9px;border-radius:20px;font-weight:700;
+  color:#fff;display:flex;align-items:center;gap:4px}
+.ehc-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.7)}
+.ehc-meta{display:flex;gap:8px;flex-wrap:wrap}
+
+/* No-result state */
+.no-result{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;color:var(--muted);padding:32px 0;}
+.no-result-icon{font-size:2.5rem;opacity:.25}
+.no-result-txt{font-size:.84rem;font-weight:500}
+
+/* ── Upload drop zone ── */
+.upload-drop-zone{
+  border:2px dashed var(--border2);border-radius:var(--radius);
+  padding:32px 20px;display:flex;flex-direction:column;align-items:center;
+  gap:10px;cursor:pointer;transition:border-color .2s,background .2s;
+  background:var(--surf2);
+}
+.upload-drop-zone:hover,.upload-drop-zone.drag{border-color:var(--orange);background:var(--orange-lt)}
+
+/* ═══════════════════════════ BOTTOM NAV ═══════════════════════════ */
+.bottom-nav{height:var(--nav);flex-shrink:0;display:flex;
+  background:var(--bg2);border-top:1px solid var(--border);box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;border:none;background:transparent;color:var(--muted2);font-size:.6rem;
+  font-weight:700;letter-spacing:.02em;transition:color .2s;outline:none;touch-action:manipulation}
+.nav-btn.active{color:var(--orange)}
+.nav-btn.active .nav-icon{background:var(--orange-lt)}
+.nav-icon{width:38px;height:28px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;font-size:18px;transition:background .2s}
+
+/* ═══════════════════════════ TOAST ═══════════════════════════ */
+#toast-container{position:fixed;bottom:calc(var(--nav) + 12px);left:50%;
+  transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;
+  align-items:center;gap:6px;pointer-events:none}
+.toast{padding:10px 20px;border-radius:24px;font-size:.78rem;font-weight:600;
+  opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;
+  box-shadow:var(--shadow);white-space:nowrap}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--green-lt);border:1.5px solid rgba(15,157,88,.4);color:var(--green)}
+.toast.error{background:var(--red-lt);border:1.5px solid rgba(217,48,37,.4);color:var(--red)}
+.toast.info{background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.3);color:var(--blue)}
+
+/* ═══════════════════════════ MODALS ═══════════════════════════ */
+.modal-backdrop{position:fixed;inset:0;background:rgba(26,37,53,.45);z-index:50;
+  display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)}
+.modal-backdrop.open{display:flex}
+.modal{width:100%;max-width:480px;background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:18px 18px 0 0;padding:24px 20px 36px;display:flex;flex-direction:column;gap:14px;
+  box-shadow:var(--shadow-lg)}
+.modal-title{font-size:1rem;font-weight:700;color:var(--text)}
+.modal-sub{font-size:.79rem;color:var(--muted)}
+.modal-input{background:var(--surf2);border:1.5px solid var(--border);border-radius:9px;
+  padding:11px 13px;font-size:.9rem;color:var(--text);outline:none;width:100%;
+  font-family:inherit;transition:border-color .2s}
+.modal-input:focus{border-color:var(--orange)}
+.modal-btns{display:flex;gap:10px}
+.modal-btns .btn{font-size:.88rem}
+.btn-confirm{background:linear-gradient(135deg,var(--orange),#C23D00);color:#fff;
+  box-shadow:0 4px 12px rgba(232,81,10,.3)}
+.btn-cancel{background:var(--surf2);border:1.5px solid var(--border);color:var(--muted)}
+
+/* ═══════════════════════════ DESKTOP ═══════════════════════════ */
+@media(min-width:640px){
+  .ctrl-bar{flex-direction:row;align-items:center;padding:10px 20px}
+  .bar-row{flex:1;flex-wrap:nowrap}
+  .btn-row{flex:0 0 auto;width:320px}
+  .btn{padding:10px 12px}
+  .modal-backdrop{align-items:center}
+  .modal{border-radius:18px;max-width:420px}
+  .hist-wrap{padding:16px 22px}
+  .module-grid{grid-template-columns:1fr 1fr;max-width:460px}
+  .bottom-sheet{--sheet-peek:140px;--sheet-full:70vh}
+}
+@media(min-width:900px){
+  .module-grid{max-width:520px}
+  .bottom-sheet{--sheet-full:60vh}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<header>
+  <img class="logo-img" src="/logo.png"
+       alt="QicScan" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='block'"/>
+  <span id="logoFallback" style="display:none;font-size:1.1rem;font-weight:800;color:var(--orange)">QicScan</span>
+  <div class="status-pill">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Ready</span>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     LANDING PAGE
+═══════════════════════════════════════════════════════════ -->
+<div id="pageLanding" class="top-page active">
+  <div class="landing-logo">
+    <img src="/logo.png" alt="QicScan" style="height:44px;object-fit:contain;margin-bottom:4px"
+         onerror="this.style.display='none'"/>
+    <div class="landing-tagline">AI-Powered Pharmaceutical Quality Control</div>
+  </div>
+  <div class="module-grid" style="grid-template-columns:1fr 1fr;max-width:440px">
+    <div class="module-card" onclick="openModule('pill')">
+      <div class="module-icon pill">💊</div>
+      <div class="module-title">Pill Detection</div>
+      <div class="module-desc">Real-time live counting &amp; image analysis</div>
+      <div class="module-badge">Live + Upload</div>
+    </div>
+    <div class="module-card" onclick="openModule('each')">
+      <div class="module-icon each">📦</div>
+      <div class="module-title">Each Sorting</div>
+      <div class="module-desc">Barcode scan &amp; expiry group analysis</div>
+      <div class="module-badge blue">Live + Upload</div>
+    </div>
+    <div class="module-card" style="grid-column:1/-1" onclick="openModule('box')">
+      <div class="module-icon box" style="width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">🗳️</div>
+      <div class="module-title">Medicine Box Counting</div>
+      <div class="module-desc">Capture or upload an image to count &amp; identify medicine boxes</div>
+      <div class="module-badge green">Image Analysis</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PILL DETECTION MODULE
+═══════════════════════════════════════════════════════════ -->
+<div class="top-page" id="pagePill">
+
+  <!-- Sub-header -->
+  <div class="sub-header">
+    <button class="btn-back" onclick="goHome()">&#8592; Back</button>
+    <span class="sub-title">Pill Detection</span>
+  </div>
+
+  <!-- Pill sub-tabs -->
+  <div style="flex-shrink:0;display:flex;background:var(--bg2);border-bottom:1px solid var(--border)">
+    <button class="nav-btn active" id="pillTabLive" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchPillTab('live')">
+      <span>📹 Live</span>
+    </button>
+    <button class="nav-btn" id="pillTabUpload" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchPillTab('upload')">
+      <span>📄 Upload</span>
+    </button>
+    <button class="nav-btn" id="pillTabHistory" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchPillTab('history')">
+      <span>📋 History</span>
+    </button>
+  </div>
+
+  <!-- Live view -->
+  <div class="view-page active" id="pillLivePage">
+    <div class="camera-wrap">
+      <canvas id="liveCanvas"></canvas>
+      <div class="hud">
+        <div class="chip chip-fps">FPS&nbsp;<span id="fpsVal">—</span></div>
+        <div class="chip chip-count">Pills&nbsp;<span id="countVal">0</span></div>
+        <div class="chip chip-peak">Peak&nbsp;<span id="peakVal">0</span></div>
+        <div class="chip chip-conf">Conf&nbsp;<span id="confHud">0.40</span></div>
+      </div>
+      <div id="placeholder">
+        <div class="ph-icon">📷</div>
+        <div class="ph-hint">Tap <strong>Start Camera</strong> to begin</div>
+      </div>
+    </div>
+    <div class="ctrl-bar">
+      <div class="bar-row">
+        <span class="lbl">Conf</span>
+        <input type="range" id="confSlider" min="5" max="95" value="40"/>
+        <span class="sval" id="confVal">0.40</span>
+        <span class="lbl" style="margin-left:4px">Res</span>
+        <select id="resSel">
+          <option value="320" selected>320 (fast)</option>
+          <option value="480">480px</option>
+          <option value="640">640px</option>
+          <option value="1280">1280 (HD)</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-start" id="btnStart">&#9654; Start</button>
+        <button class="btn btn-stop"  id="btnStop"  disabled>&#9632; Stop</button>
+        <button class="btn btn-save"  id="btnSave"  disabled>&#128190; Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload / Image view -->
+  <div class="view-page" id="pillUploadPage">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div id="pillUploadDrop" class="upload-drop-zone">
+        <div style="font-size:2rem;opacity:.4">📄</div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--muted)">Tap to select or drop an image</div>
+        <input type="file" id="pillUploadInput" accept="image/*" style="display:none"/>
+      </div>
+      <div id="pillUploadPreviewWrap" style="display:none">
+        <img id="pillUploadPreview" style="width:100%;border-radius:10px;display:block;box-shadow:var(--shadow)"/>
+      </div>
+      <div class="bar-row" style="gap:10px">
+        <span class="lbl">Conf</span>
+        <input type="range" id="pillUploadConf" min="5" max="95" value="40" style="flex:1;min-width:80px"/>
+        <span class="sval" id="pillUploadConfVal">0.40</span>
+        <button class="btn btn-start" id="btnPillUploadScan" style="flex:0 0 auto;padding:10px 18px" disabled>&#128269; Analyse</button>
+      </div>
+      <div id="pillUploadResultWrap" style="display:none;flex-direction:column;gap:12px">
+        <div class="annotated-wrap">
+          <span class="annotated-label" id="pillUploadAnnotLabel"></span>
+          <img id="pillUploadAnnotImg" style="width:100%;display:block"/>
+        </div>
+        <div class="stat-bar" id="pillUploadStatBar"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-save" id="btnPillUploadSave" style="flex:1">&#128190; Save Result</button>
+          <a id="pillUploadDownload" download="pill_result.jpg"
+             style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.3);color:var(--blue);
+                    border-radius:var(--radius);font-size:.8rem;font-weight:700;text-decoration:none;padding:12px">
+            &#11015; Download
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History view -->
+  <div class="view-page" id="pillHistoryPage">
+    <div class="hist-wrap">
+      <div class="hist-topbar">
+        <span class="hist-title">Saved Sessions</span>
+        <button class="btn-clear" id="btnClearAll">Clear all</button>
+      </div>
+      <div class="hist-empty" id="histEmpty">
+        <div class="hist-empty-icon">🗂️</div>
+        <div>No saved sessions yet</div>
+        <div style="font-size:.72rem;color:var(--muted2)">Start a detection session and save</div>
+      </div>
+      <div id="histList"></div>
+    </div>
+  </div>
+
+</div><!-- /pagePill (top-page) -->
+
+<!-- ══════════════════════════════════════════════════════════
+     EACH SORTING MODULE
+═══════════════════════════════════════════════════════════ -->
+<div class="top-page" id="pageEach">
+
+  <!-- Sub-header -->
+  <div class="sub-header">
+    <button class="btn-back" onclick="goHome()">&#8592; Back</button>
+    <span class="sub-title">Each Sorting</span>
+  </div>
+
+  <!-- Full-screen camera (behind the sheet) -->
+  <div class="each-cam-wrap" id="eachCamWrap">
+    <video id="eachVideo" autoplay playsinline muted></video>
+    <canvas id="eachCanvas"></canvas>
+    <div class="each-cam-placeholder" id="eachPlaceholder">
+      <div class="each-ph-icon">📷</div>
+      <div class="each-ph-txt">Tap Camera to start live view</div>
+    </div>
+    <div class="scan-overlay" id="scanOverlay">
+      <div class="spinner"></div>
+      <div class="scan-overlay-txt">Scanning barcodes…</div>
+    </div>
+  </div>
+
+  <!-- Bottom sheet (swipeable) -->
+  <div class="bottom-sheet" id="bottomSheet">
+
+    <!-- Drag handle -->
+    <div class="sheet-handle-area" id="sheetHandle">
+      <div class="sheet-handle"></div>
+    </div>
+
+    <!-- Controls row -->
+    <div class="each-controls">
+      <button class="btn-each btn-cam-start" id="btnEachCam">&#128247; Cam</button>
+      <button class="btn-each btn-scan" id="btnEachScan" disabled>&#128269; Scan</button>
+      <button class="btn-each" id="btnEachUploadTrig"
+        style="background:var(--surf2);border:1.5px solid var(--border);color:var(--muted);font-size:.75rem">
+        &#128196; Upload
+      </button>
+      <button class="btn-each btn-each-save" id="btnEachSave" disabled>&#128190; Save</button>
+      <button class="btn-each btn-each-clear" id="btnEachClear">&#215; Clear</button>
+    </div>
+    <input type="file" id="eachUploadInput" accept="image/*" style="display:none"/>
+
+    <!-- Sheet tabs -->
+    <div class="sheet-tab-row">
+      <button class="sheet-tab active" id="eachTabScan" onclick="switchEachTab('scan')">&#128269; Results</button>
+      <button class="sheet-tab" id="eachTabHistory" onclick="switchEachTab('history')">&#128203; History</button>
+    </div>
+
+    <!-- Scrollable content -->
+    <div class="sheet-content">
+
+      <!-- Scan results pane -->
+      <div class="sheet-pane active" id="eachScanPage">
+        <div class="no-result" id="eachNoResult">
+          <div class="no-result-icon">&#128268;</div>
+          <div class="no-result-txt">Scan eaches to see GS1 results</div>
+        </div>
+      </div>
+
+      <!-- History pane -->
+      <div class="sheet-pane" id="eachHistoryPage">
+        <div class="hist-topbar">
+          <span class="hist-title" style="color:var(--blue)">Each Scan History</span>
+          <button class="btn-clear" id="btnEachClearAll">Clear all</button>
+        </div>
+        <div class="hist-empty" id="eachHistEmpty">
+          <div class="hist-empty-icon">📦</div>
+          <div>No saved each scans yet</div>
+          <div style="font-size:.72rem;color:var(--muted2)">Scan and save to build history</div>
+        </div>
+        <div id="eachHistList"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /pageEach (top-page) -->
+
+<!-- ══════════════════════════════════════════════════════════
+     MEDICINE BOX COUNTING MODULE
+════════════════════════════════════════════════════════════ -->
+<div class="top-page" id="pageBox">
+
+  <!-- Sub-header -->
+  <div class="sub-header">
+    <button class="btn-back" onclick="goHome()">&#8592; Back</button>
+    <span class="sub-title">Medicine Box Counting</span>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div style="flex-shrink:0;display:flex;background:var(--bg2);border-bottom:1px solid var(--border)">
+    <button class="nav-btn active" id="boxTabScan" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchBoxTab('scan')"><span>📸 Capture / Upload</span></button>
+    <button class="nav-btn" id="boxTabHistory" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchBoxTab('history')"><span>📋 History</span></button>
+  </div>
+
+  <!-- Scan tab -->
+  <div class="view-page active" id="boxScanPage" style="flex:1;overflow-y:auto">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+      <!-- Capture / Upload buttons -->
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-start" id="btnBoxCapture" style="flex:1">
+          &#128247; Capture Photo
+        </button>
+        <button class="btn" id="btnBoxUpload"
+          style="flex:1;background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.3);color:var(--blue)">
+          &#128196; Upload Image
+        </button>
+      </div>
+      <input type="file" id="boxFileInput" accept="image/*" capture="environment" style="display:none"/>
+      <input type="file" id="boxUploadInput" accept="image/*" style="display:none"/>
+
+      <!-- Image preview -->
+      <div id="boxPreviewWrap" style="display:none">
+        <img id="boxPreviewImg" style="width:100%;border-radius:10px;display:block;box-shadow:var(--shadow)"/>
+        <div class="bar-row" style="margin-top:10px;gap:10px">
+          <span class="lbl">Confidence</span>
+          <input type="range" id="boxConfSlider" min="5" max="95" value="40" style="flex:1"/>
+          <span class="sval" id="boxConfVal">0.40</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-start" id="btnBoxAnalyse" style="flex:1">
+            &#128269; Analyse
+          </button>
+          <button class="btn" id="btnBoxSave" disabled
+            style="flex:0 0 auto;background:var(--green-lt);border:1.5px solid rgba(15,157,88,.35);color:var(--green);padding:12px 16px">
+            &#128190; Save
+          </button>
+        </div>
+      </div>
+
+      <!-- Spinner -->
+      <div id="boxSpinner" style="display:none;align-items:center;justify-content:center;padding:32px;gap:12px">
+        <div class="spinner" style="border-top-color:var(--green)"></div>
+        <span style="font-size:.84rem;color:var(--muted);font-weight:600">Analysing…</span>
+      </div>
+
+      <!-- Result -->
+      <div id="boxResultWrap" style="display:none;flex-direction:column;gap:12px">
+        <div class="annotated-wrap">
+          <span class="annotated-label" id="boxAnnotLabel"></span>
+          <img id="boxAnnotImg" style="width:100%;display:block"/>
+        </div>
+        <div class="stat-bar" id="boxStatBar"></div>
+        <div id="boxCountsDetail"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- History tab -->
+  <div class="view-page" id="boxHistoryPage" style="flex:1;overflow:hidden">
+    <div class="hist-wrap">
+      <div class="hist-topbar">
+        <span class="hist-title" style="color:var(--green)">Box Scan History</span>
+        <button class="btn-clear" id="btnBoxClearAll">Clear all</button>
+      </div>
+      <div class="hist-empty" id="boxHistEmpty">
+        <div class="hist-empty-icon">🗳️</div>
+        <div>No saved scans yet</div>
+        <div style="font-size:.72rem;color:var(--muted2)">Analyse an image and save</div>
+      </div>
+      <div id="boxHistList"></div>
+    </div>
+  </div>
+
+</div><!-- /pageBox (top-page) -->
+
+<!-- ══════════════════════════════════════════════════════════
+     TOAST CONTAINER
+═══════════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PILL SAVE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="saveModal">
+  <div class="modal">
+    <div>
+      <div class="modal-title">&#128190; Save Detection Session</div>
+      <div class="modal-sub" id="modalSub">Count: 0 · Peak: 0</div>
+    </div>
+    <input class="modal-input" id="noteInput" type="text"
+           placeholder="Optional label / note…" maxlength="100"/>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" id="modalCancel">Cancel</button>
+      <button class="btn btn-confirm" id="modalConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     EACH SAVE MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="eachSaveModal">
+  <div class="modal">
+    <div>
+      <div class="modal-title">&#128190; Save Each Scan</div>
+      <div class="modal-sub" id="eachModalSub">Total: 0 eaches · 0 groups</div>
+    </div>
+    <input class="modal-input" id="eachNoteInput" type="text"
+           placeholder="Optional batch label / note…" maxlength="100"/>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" id="eachModalCancel">Cancel</button>
+      <button class="btn btn-confirm" id="eachModalConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     BOX SAVE MODAL
+════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="boxSaveModal">
+  <div class="modal">
+    <div>
+      <div class="modal-title">&#128190; Save Box Scan</div>
+      <div class="modal-sub" id="boxModalSub">Total: 0 items</div>
+    </div>
+    <input class="modal-input" id="boxNoteInput" type="text"
+           placeholder="Optional label / note…" maxlength="100"/>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" id="boxModalCancel">Cancel</button>
+      <button class="btn btn-confirm" id="boxModalConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden video element for pill detection -->
+<video id="video" autoplay playsinline muted></video>
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════ UTILITIES ═══════════════════ */
+function toast(msg, type='info', ms=2800){
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('show')));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),300); }, ms);
+}
+
+function setStatus(type, text){
+  document.getElementById('statusDot').className = 'dot'+(type?' '+type:'');
+  document.getElementById('statusText').textContent = text;
+}
+
+function fmtDate(iso){
+  const dt = new Date(iso);
+  return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})
+        +' '+dt.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ═══════════════════ ROUTING ═══════════════════ */
+let currentModule = null;  // 'pill' | 'each' | null
+
+const TOP_PAGES = ['pageLanding','pagePill','pageEach','pageBox'];
+function showTopPage(id){
+  TOP_PAGES.forEach(pid=>{
+    const el=document.getElementById(pid);
+    if(el) el.classList.toggle('active', pid===id);
+  });
+}
+
+window.openModule = function(mod){
+  currentModule = mod;
+  const map = {pill:'pagePill', each:'pageEach', box:'pageBox'};
+  showTopPage(map[mod] || 'pageLanding');
+  setStatus('','Ready');
+};
+
+window.goHome = function(){
+  stopPill();
+  stopEachCam();
+  showTopPage('pageLanding');
+  setStatus('','Ready');
+  currentModule = null;
+};
+
+/* ═══════════════════ PILL DETECTION ═══════════════════ */
+const video       = document.getElementById('video');
+const canvas      = document.getElementById('liveCanvas');
+const ctx         = canvas.getContext('2d');
+const placeholder = document.getElementById('placeholder');
+const fpsVal      = document.getElementById('fpsVal');
+const countVal    = document.getElementById('countVal');
+const peakVal     = document.getElementById('peakVal');
+const confHud     = document.getElementById('confHud');
+const btnStart    = document.getElementById('btnStart');
+const btnStop     = document.getElementById('btnStop');
+const btnSave     = document.getElementById('btnSave');
+const confSlider  = document.getElementById('confSlider');
+const confValEl   = document.getElementById('confVal');
+const resSel      = document.getElementById('resSel');
+const histList    = document.getElementById('histList');
+const histEmpty   = document.getElementById('histEmpty');
+const btnClearAll = document.getElementById('btnClearAll');
+const saveModal   = document.getElementById('saveModal');
+const modalSub    = document.getElementById('modalSub');
+const noteInput   = document.getElementById('noteInput');
+const modalCancel = document.getElementById('modalCancel');
+const modalConfirm= document.getElementById('modalConfirm');
+
+let ws=null, isRunning=false;
+let latestDets=[], latestFps=0, latestCount=0, latestPeak=0;
+let rafId=null, sendTimerId=null;
+const sendCanvas=document.createElement('canvas');
+const sendCtx=sendCanvas.getContext('2d');
+
+function switchPillTab(tab){
+  ['live','upload','history'].forEach(t=>{
+    const pg = t==='live'?'pillLivePage':t==='upload'?'pillUploadPage':'pillHistoryPage';
+    const tb = t==='live'?'pillTabLive':t==='upload'?'pillTabUpload':'pillTabHistory';
+    document.getElementById(pg).classList.toggle('active', t===tab);
+    document.getElementById(tb).classList.toggle('active', t===tab);
+  });
+  if(tab==='history') loadPillHistory();
+}
+window.switchPillTab = switchPillTab;
+
+function getConf(){ return parseFloat((confSlider.value/100).toFixed(2)); }
+confSlider.addEventListener('input',()=>{
+  const v=getConf();
+  confValEl.textContent=v.toFixed(2);
+  confHud.textContent=v.toFixed(2);
+  if(ws&&ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({conf:v}));
+});
+
+function sendFrame(){
+  if(!isRunning||!ws||ws.readyState!==WebSocket.OPEN) return;
+  if(video.readyState<2||video.videoWidth===0) return;
+  const sendW=parseInt(resSel.value);
+  const aspect=video.videoWidth/video.videoHeight;
+  sendCanvas.width=sendW; sendCanvas.height=Math.round(sendW/aspect);
+  sendCtx.drawImage(video,0,0,sendCanvas.width,sendCanvas.height);
+  sendCanvas.toBlob(blob=>{
+    if(blob&&ws&&ws.readyState===WebSocket.OPEN)
+      blob.arrayBuffer().then(buf=>ws.send(buf));
+  },'image/jpeg',0.65);
+}
+
+function connectWS(){
+  const proto=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(`${proto}://${location.host}/ws`);
+  ws.binaryType='arraybuffer';
+  ws.onopen=()=>{
+    setStatus('connecting','Connecting…');
+    ws.send(JSON.stringify({conf:getConf()}));
+    sendTimerId=setInterval(sendFrame,40);
+  };
+  ws.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      latestFps=d.fps||0; latestCount=d.count||0;
+      latestPeak=d.peak||0; latestDets=d.detections||[];
+      fpsVal.textContent=latestFps;
+      countVal.textContent=latestCount;
+      peakVal.textContent=latestPeak;
+      setStatus('live','Live');
+    }catch(_){}
+  };
+  ws.onclose=()=>{
+    clearInterval(sendTimerId);
+    setStatus('','Disconnected');
+    if(isRunning) setTimeout(connectWS,1500);
+  };
+  ws.onerror=()=>setStatus('error','Error');
+}
+
+function renderLoop(){
+  if(!isRunning) return;
+  if(video.videoWidth>0){
+    if(canvas.width!==video.videoWidth||canvas.height!==video.videoHeight){
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+    }
+    ctx.drawImage(video,0,0);
+    if(latestDets.length) drawDetections(latestDets);
+  }
+  rafId=requestAnimationFrame(renderLoop);
+}
+
+function drawDetections(dets){
+  const sw=sendCanvas.width||canvas.width;
+  const sh=sendCanvas.height||canvas.height;
+  const sx=canvas.width/sw, sy=canvas.height/sh;
+  dets.forEach(det=>{
+    const [x1,y1,x2,y2]=det.box;
+    const bx=x1*sx,by=y1*sy,bw=(x2-x1)*sx,bh=(y2-y1)*sy;
+    ctx.save();
+    ctx.shadowColor='#E8510A';ctx.shadowBlur=12;
+    ctx.strokeStyle='#E8510A';ctx.lineWidth=2.5;
+    ctx.strokeRect(bx,by,bw,bh);
+    ctx.restore();
+    const cs=Math.max(6,Math.min(bw,bh)*0.18);
+    ctx.save();
+    ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.lineCap='round';
+    [[[bx,by+cs],[bx,by],[bx+cs,by]],
+     [[bx+bw-cs,by],[bx+bw,by],[bx+bw,by+cs]],
+     [[bx,by+bh-cs],[bx,by+bh],[bx+cs,by+bh]],
+     [[bx+bw-cs,by+bh],[bx+bw,by+bh],[bx+bw,by+bh-cs]]
+    ].forEach(pts=>{
+      ctx.beginPath();ctx.moveTo(...pts[0]);ctx.lineTo(...pts[1]);ctx.lineTo(...pts[2]);ctx.stroke();
+    });
+    ctx.restore();
+    const pct=Math.round(det.score*100);
+    const lbl=`${det.label.toUpperCase()} ${pct}%`;
+    const fs=Math.max(11,Math.round(bh*0.12));
+    ctx.font=`bold ${fs}px 'Segoe UI',sans-serif`;
+    const tw=ctx.measureText(lbl).width;
+    const lh=fs+8;
+    const lx=bx, ly=by>lh+2?by-lh-2:by+2;
+    ctx.fillStyle='rgba(232,81,10,.92)';
+    ctx.beginPath();ctx.roundRect(lx,ly,tw+12,lh,4);ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.fillText(lbl,lx+6,ly+lh-4);
+  });
+}
+
+function stopPill(){
+  isRunning=false;
+  clearInterval(sendTimerId);cancelAnimationFrame(rafId);
+  if(ws){ws.close();ws=null;}
+  if(video.srcObject){video.srcObject.getTracks().forEach(t=>t.stop());video.srcObject=null;}
+  latestDets=[];ctx.clearRect(0,0,canvas.width,canvas.height);
+  placeholder.style.display='flex';
+  fpsVal.textContent='—';countVal.textContent='0';peakVal.textContent='0';
+  setStatus('','Ready');
+  btnStart.disabled=false;btnStop.disabled=true;btnSave.disabled=true;
+}
+
+btnStart.addEventListener('click',async()=>{
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280}},audio:false});
+    video.srcObject=stream;
+    await video.play();
+    placeholder.style.display='none';
+    isRunning=true; latestDets=[];latestPeak=0;
+    btnStart.disabled=true;btnStop.disabled=false;btnSave.disabled=false;
+    setStatus('connecting','Connecting…');
+    connectWS(); renderLoop();
+  }catch(err){toast('Camera error: '+err.message,'error');}
+});
+
+btnStop.addEventListener('click',stopPill);
+
+btnSave.addEventListener('click',()=>{
+  modalSub.textContent=`Count: ${latestCount} · Peak: ${latestPeak}`;
+  noteInput.value=''; saveModal.classList.add('open');
+  setTimeout(()=>noteInput.focus(),50);
+});
+modalCancel.addEventListener('click',()=>saveModal.classList.remove('open'));
+saveModal.addEventListener('click',e=>{if(e.target===saveModal)saveModal.classList.remove('open');});
+noteInput.addEventListener('keydown',e=>{if(e.key==='Enter')modalConfirm.click();});
+modalConfirm.addEventListener('click',async()=>{
+  saveModal.classList.remove('open');
+  // capture current canvas frame as annotated image
+  let snapB64 = '';
+  try{ snapB64 = canvas.toDataURL('image/jpeg',0.80).split(',')[1]; }catch(_){}
+  try{
+    const res=await fetch('/api/save',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({count:latestCount,peak:latestPeak,
+        note:noteInput.value.trim(),conf:getConf(),fps:latestFps,
+        annotated_img:snapB64})});
+    if(res.ok) toast(`Saved — ${latestCount} pill${latestCount!==1?'s':''} detected`,'success');
+    else toast('Save failed','error');
+  }catch(e){toast('Network error','error');}
+});
+
+async function loadPillHistory(){
+  try{
+    const data=await fetch('/api/sessions').then(r=>r.json());
+    renderPillHistory(data);
+  }catch(e){histList.innerHTML='<p style="color:var(--red);font-size:.8rem">Failed to load</p>';}
+}
+
+function renderPillHistory(sessions){
+  histEmpty.style.display=sessions.length?'none':'flex';
+  histList.innerHTML='';
+  sessions.forEach(s=>{
+    const card=document.createElement('div');
+    card.className='session-card';
+    const thumbHtml = s.annotated_img
+      ? `<img src="data:image/jpeg;base64,${s.annotated_img}"
+             style="width:100%;border-radius:8px;display:block;margin-bottom:8px;box-shadow:var(--shadow)"/>`
+      : '';
+    card.innerHTML=`
+      ${thumbHtml}
+      <div class="sc-top">
+        <div><div class="sc-count">${s.count}</div><div class="sc-peak">Peak: ${s.peak||s.count}</div></div>
+        <div class="sc-note${s.note?'':' empty'}">${s.note||'No label'}</div>
+        <button class="btn-del" data-id="${s.id}" title="Delete">&#215;</button>
+      </div>
+      <div class="sc-meta">
+        <span class="sc-tag tag-conf">Conf ${s.conf}</span>
+        ${s.fps?`<span class="sc-tag tag-fps">${s.fps} FPS</span>`:''}
+        <span class="sc-tag tag-time">${fmtDate(s.timestamp)}</span>
+      </div>`;
+    card.querySelector('.btn-del').addEventListener('click',async function(){
+      await fetch('/api/sessions/'+this.dataset.id,{method:'DELETE'});
+      card.style.opacity='0';card.style.transition='opacity .25s';
+      setTimeout(()=>{card.remove();histEmpty.style.display=histList.children.length?'none':'flex';},250);
+      toast('Session deleted','info');
+    });
+    histList.appendChild(card);
+  });
+}
+
+btnClearAll.addEventListener('click',async()=>{
+  if(!confirm('Delete all pill sessions?')) return;
+  await fetch('/api/sessions',{method:'DELETE'});
+  histList.innerHTML=''; histEmpty.style.display='flex';
+  toast('All sessions cleared','info');
+});
+
+/* ═══════════════════ PILL UPLOAD ═══════════════════ */
+const pillUploadDrop      = document.getElementById('pillUploadDrop');
+const pillUploadInput     = document.getElementById('pillUploadInput');
+const pillUploadPreview   = document.getElementById('pillUploadPreview');
+const pillUploadPreviewWrap=document.getElementById('pillUploadPreviewWrap');
+const pillUploadConf      = document.getElementById('pillUploadConf');
+const pillUploadConfVal   = document.getElementById('pillUploadConfVal');
+const btnPillUploadScan   = document.getElementById('btnPillUploadScan');
+const pillUploadResultWrap= document.getElementById('pillUploadResultWrap');
+const pillUploadAnnotImg  = document.getElementById('pillUploadAnnotImg');
+const pillUploadAnnotLabel= document.getElementById('pillUploadAnnotLabel');
+const pillUploadStatBar   = document.getElementById('pillUploadStatBar');
+const btnPillUploadSave   = document.getElementById('btnPillUploadSave');
+const pillUploadDownload  = document.getElementById('pillUploadDownload');
+
+let pillUploadB64 = null;
+let lastPillUploadResult = null;
+
+pillUploadConf.addEventListener('input',()=>{
+  pillUploadConfVal.textContent = (pillUploadConf.value/100).toFixed(2);
+});
+
+function loadPillUploadImage(file){
+  if(!file||!file.type.startsWith('image/')) return;
+  const fr = new FileReader();
+  fr.onload = e=>{
+    pillUploadPreview.src = e.target.result;
+    pillUploadPreviewWrap.style.display='block';
+    pillUploadB64 = e.target.result.split(',')[1];
+    btnPillUploadScan.disabled = false;
+    pillUploadResultWrap.style.display='none';
+  };
+  fr.readAsDataURL(file);
+}
+
+pillUploadDrop.addEventListener('click',()=>pillUploadInput.click());
+pillUploadInput.addEventListener('change',()=>loadPillUploadImage(pillUploadInput.files[0]));
+pillUploadDrop.addEventListener('dragover',e=>{e.preventDefault();pillUploadDrop.classList.add('drag');});
+pillUploadDrop.addEventListener('dragleave',()=>pillUploadDrop.classList.remove('drag'));
+pillUploadDrop.addEventListener('drop',e=>{
+  e.preventDefault();pillUploadDrop.classList.remove('drag');
+  loadPillUploadImage(e.dataTransfer.files[0]);
+});
+
+btnPillUploadScan.addEventListener('click',async()=>{
+  if(!pillUploadB64) return;
+  btnPillUploadScan.disabled=true;
+  btnPillUploadScan.textContent='Analysing…';
+  try{
+    const conf = parseFloat((pillUploadConf.value/100).toFixed(2));
+    const res = await fetch('/api/pill/scan',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image_b64:pillUploadB64, conf})});
+    const data = await res.json();
+    if(data.error){toast(data.error,'error');return;}
+    // show result
+    lastPillUploadResult = data;
+    const dataUrl = 'data:image/jpeg;base64,'+data.annotated_img;
+    pillUploadAnnotImg.src = dataUrl;
+    pillUploadAnnotLabel.textContent = `✓ ${data.total} pill${data.total!==1?'s':''} detected`;
+    // stat chips
+    let statHtml = `<div class="stat-chip"><div class="stat-num">${data.total}</div><div class="stat-lbl">Pills</div></div>`;
+    Object.entries(data.counts||{}).forEach(([lbl,cnt])=>{
+      statHtml += `<div class="stat-chip"><div class="stat-num" style="color:var(--blue)">${cnt}</div><div class="stat-lbl">${lbl}</div></div>`;
+    });
+    pillUploadStatBar.innerHTML = statHtml;
+    // set download link
+    pillUploadDownload.href = dataUrl;
+    pillUploadResultWrap.style.display='flex';
+    toast(`Detected ${data.total} pill${data.total!==1?'s':''}`, data.total?'success':'info');
+  }catch(e){toast('Analysis failed','error');}
+  finally{
+    btnPillUploadScan.disabled=false;
+    btnPillUploadScan.innerHTML='&#128269; Analyse';
+  }
+});
+
+btnPillUploadSave.addEventListener('click',async()=>{
+  if(!lastPillUploadResult) return;
+  const d = lastPillUploadResult;
+  try{
+    const res = await fetch('/api/save',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        count: d.total, peak: d.total, note: '',
+        conf: parseFloat((pillUploadConf.value/100).toFixed(2)), fps: 0,
+        annotated_img: d.annotated_img
+      })});
+    if(res.ok){
+      toast(`Saved — ${d.total} pill${d.total!==1?'s':''} detected`,'success');
+      btnPillUploadSave.disabled=true;
+    } else toast('Save failed','error');
+  }catch(e){toast('Network error','error');}
+});
+
+/* ═══════════════════ EACH SORTING ═══════════════════ */
+const eachVideo      = document.getElementById('eachVideo');
+const eachCanvas     = document.getElementById('eachCanvas');
+const eachPlaceholder= document.getElementById('eachPlaceholder');
+const scanOverlay    = document.getElementById('scanOverlay');
+const btnEachCam     = document.getElementById('btnEachCam');
+const btnEachScan    = document.getElementById('btnEachScan');
+const btnEachSave    = document.getElementById('btnEachSave');
+const btnEachClear   = document.getElementById('btnEachClear');
+const eachResultsPanel=document.getElementById('eachScanPage');  // sheet-pane
+const eachNoResult   = document.getElementById('eachNoResult');
+const eachSaveModal  = document.getElementById('eachSaveModal');
+const eachModalSub   = document.getElementById('eachModalSub');
+const eachNoteInput  = document.getElementById('eachNoteInput');
+const eachModalCancel= document.getElementById('eachModalCancel');
+const eachModalConfirm=document.getElementById('eachModalConfirm');
+const eachHistList   = document.getElementById('eachHistList');
+const eachHistEmpty  = document.getElementById('eachHistEmpty');
+const btnEachClearAll   = document.getElementById('btnEachClearAll');
+const btnEachUploadTrig = document.getElementById('btnEachUploadTrig');
+const eachUploadInput   = document.getElementById('eachUploadInput');
+
+let eachStream=null, eachRunning=false;
+let lastScanResult=null;
+
+function switchEachTab(tab){
+  ['scan','history'].forEach(t=>{
+    document.getElementById(t==='scan'?'eachScanPage':'eachHistoryPage')
+      .classList.toggle('active', t===tab);
+    document.getElementById(t==='scan'?'eachTabScan':'eachTabHistory')
+      .classList.toggle('active', t===tab);
+  });
+  if(tab==='history') loadEachHistory();
+  // open sheet when switching tabs
+  openSheet();
+}
+window.switchEachTab = switchEachTab;
+
+/* ── Bottom Sheet drag ── */
+const sheet    = document.getElementById('bottomSheet');
+const shHandle = document.getElementById('sheetHandle');
+let sheetOpen  = false;
+let dragStart  = null, dragStartY = null;
+
+function openSheet(){
+  sheet.style.transform = '';
+  sheet.classList.add('open');
+  sheetOpen = true;
+}
+function closeSheet(){
+  sheet.style.transform = '';
+  sheet.classList.remove('open');
+  sheetOpen = false;
+}
+function toggleSheet(){
+  sheetOpen ? closeSheet() : openSheet();
+}
+
+// Handle area tap toggles
+shHandle.addEventListener('click', toggleSheet);
+
+// Touch drag
+shHandle.addEventListener('touchstart', e=>{
+  dragStartY = e.touches[0].clientY;
+  sheet.style.transition = 'none';
+},{ passive:true });
+document.addEventListener('touchmove', e=>{
+  if(dragStartY === null) return;
+  const dy = e.touches[0].clientY - dragStartY;
+  if(sheetOpen && dy > 0){  // dragging down when open
+    sheet.style.transform = `translateY(${dy}px)`;
+  } else if(!sheetOpen && dy < 0){  // dragging up when closed
+    const peek = parseInt(getComputedStyle(sheet).getPropertyValue('--sheet-peek'))||130;
+    sheet.style.transform = `translateY(calc(100% - ${peek}px + ${dy}px))`;
+  }
+},{ passive:true });
+document.addEventListener('touchend', e=>{
+  if(dragStartY === null) return;
+  const dy = e.changedTouches[0].clientY - dragStartY;
+  sheet.style.transition = '';
+  if(sheetOpen && dy > 80)        closeSheet();
+  else if(!sheetOpen && dy < -50) openSheet();
+  else sheet.style.transform = '';  // snap back
+  dragStartY = null;
+},{ passive:true });
+
+// Mouse drag (desktop)
+shHandle.addEventListener('mousedown', e=>{
+  dragStartY = e.clientY;
+  sheet.style.transition = 'none';
+});
+document.addEventListener('mousemove', e=>{
+  if(dragStartY === null) return;
+  const dy = e.clientY - dragStartY;
+  if(sheetOpen && dy > 0) sheet.style.transform = `translateY(${dy}px)`;
+  else if(!sheetOpen && dy < 0){
+    const peek = parseInt(getComputedStyle(sheet).getPropertyValue('--sheet-peek'))||130;
+    sheet.style.transform = `translateY(calc(100% - ${peek}px + ${dy}px))`;
+  }
+});
+document.addEventListener('mouseup', e=>{
+  if(dragStartY === null) return;
+  const dy = e.clientY - dragStartY;
+  sheet.style.transition = '';
+  if(sheetOpen && dy > 80)        closeSheet();
+  else if(!sheetOpen && dy < -50) openSheet();
+  else sheet.style.transform = '';
+  dragStartY = null;
+});
+
+function stopEachCam(){
+  eachRunning=false;
+  if(eachStream){eachStream.getTracks().forEach(t=>t.stop());eachStream=null;}
+  eachVideo.srcObject=null;
+  eachPlaceholder.style.display='flex';
+  btnEachCam.textContent='📷 Cam';
+  btnEachScan.disabled=true;
+}
+
+btnEachCam.addEventListener('click',async()=>{
+  if(eachRunning){ stopEachCam(); return; }
+  try{
+    eachStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1920}},audio:false});
+    eachVideo.srcObject=eachStream;
+    await eachVideo.play();
+    eachRunning=true;
+    eachPlaceholder.style.display='none';
+    btnEachCam.textContent='⏹ Stop Cam';
+    btnEachScan.disabled=false;
+    setStatus('live','Camera Live');
+  }catch(err){toast('Camera error: '+err.message,'error');}
+});
+
+btnEachScan.addEventListener('click',async()=>{
+  if(!eachRunning){ toast('Start camera first','info'); return; }
+
+  /* Capture frame from video */
+  const captureCanvas=document.createElement('canvas');
+  captureCanvas.width=eachVideo.videoWidth;
+  captureCanvas.height=eachVideo.videoHeight;
+  captureCanvas.getContext('2d').drawImage(eachVideo,0,0);
+
+  /* Show spinner */
+  scanOverlay.classList.add('show');
+  btnEachScan.disabled=true;
+
+  try{
+    const blob=await new Promise(res=>captureCanvas.toBlob(res,'image/jpeg',0.92));
+    const b64=await blobToBase64(blob);
+
+    const resp=await fetch('/api/each/scan',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image_b64:b64})
+    });
+    const result=await resp.json();
+    lastScanResult=result;
+    renderEachResults(result);
+    btnEachSave.disabled=false;
+    toast(`Found ${result.total} barcode${result.total!==1?'s':''} in ${result.groups.length} expiry group${result.groups.length!==1?'s':''}`,
+      result.total>0?'success':'info');
+  }catch(e){
+    toast('Scan error: '+e.message,'error');
+  }finally{
+    scanOverlay.classList.remove('show');
+    btnEachScan.disabled=false;
+  }
+});
+
+function blobToBase64(blob){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>res(fr.result.split(',')[1]);
+    fr.onerror=rej;
+    fr.readAsDataURL(blob);
+  });
+}
+
+/* Vivid group colours — high contrast, distinct */
+const GROUP_COLORS = [
+  '#E63946',  // red
+  '#2196F3',  // blue
+  '#4CAF50',  // green
+  '#FF9800',  // orange
+  '#9C27B0',  // purple
+  '#00BCD4',  // cyan
+  '#FF5722',  // deep-orange
+  '#8BC34A',  // light-green
+  '#3F51B5',  // indigo
+  '#FFC107',  // amber
+  '#E91E63',  // pink
+  '#009688',  // teal
+];
+
+function renderEachResults(data){
+  eachResultsPanel.innerHTML='';
+
+  if(!data.total){
+    eachResultsPanel.innerHTML=
+      `<div class="no-result"><div class="no-result-icon">&#128268;</div>
+       <div class="no-result-txt">No barcodes detected — try better lighting</div></div>`;
+    // open sheet to show result
+    openSheet();
+    return;
+  }
+
+  // Re-assign vivid colours by group index (overrides server colour)
+  data.groups.forEach((grp,i)=>{ grp.color = GROUP_COLORS[i % GROUP_COLORS.length]; });
+  // Also sync color_map for annotated image (already rendered server-side, this is for UI only)
+
+  /* Annotated image */
+  if(data.annotated_img){
+    const wrap=document.createElement('div');
+    wrap.className='annotated-wrap';
+    wrap.innerHTML=`<span class="annotated-label">✓ ${data.total} barcode${data.total!==1?'s':''} · ${data.groups.length} expiry group${data.groups.length!==1?'s':''}</span>
+                    <img src="data:image/jpeg;base64,${data.annotated_img}" alt="annotated"/>`;
+    eachResultsPanel.appendChild(wrap);
+  }
+
+  /* Summary stat chips */
+  const uniqueGtins = new Set(data.groups.flatMap(g=>g.items.map(i=>i.gtin).filter(Boolean))).size;
+  const statBar=document.createElement('div');
+  statBar.className='stat-bar';
+  statBar.innerHTML=`
+    <div class="stat-chip">
+      <div class="stat-num">${data.total}</div>
+      <div class="stat-lbl">Eaches</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-num" style="color:var(--blue)">${data.groups.length}</div>
+      <div class="stat-lbl">Exp. Groups</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-num" style="color:var(--green)">${uniqueGtins||'—'}</div>
+      <div class="stat-lbl">Unique GTINs</div>
+    </div>`;
+  eachResultsPanel.appendChild(statBar);
+
+  /* Colour legend bar */
+  const colorBar = document.createElement('div');
+  colorBar.className = 'expiry-color-bar';
+  colorBar.innerHTML = data.groups.map(grp=>{
+    const disp = grp.expiry_display || grp.expiry || '?';
+    return `<div class="ecb-chip" style="background:${grp.color}">
+      <div class="ecb-dot"></div>${disp} &times;${grp.count}
+    </div>`;
+  }).join('');
+  eachResultsPanel.appendChild(colorBar);
+
+  /* Section title */
+  const grpTitle=document.createElement('div');
+  grpTitle.className='grp-section-title';
+  grpTitle.textContent='Expiry Groups';
+  eachResultsPanel.appendChild(grpTitle);
+
+  /* Group cards */
+  data.groups.forEach((grp,gi)=>{
+    const card=document.createElement('div');
+    card.className='group-card';
+    card.style.borderLeftColor = grp.color;
+    const bodyId=`grpBody_${gi}`;
+    const chevId=`grpChev_${gi}`;
+    const dispExp = grp.expiry_display || grp.expiry || 'Unknown';
+    const isoExp  = grp.expiry
+      ? new Date(grp.expiry).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})
+      : 'Unknown';
+
+    card.innerHTML=`
+      <div class="group-header" onclick="toggleGroup('${bodyId}','${chevId}')">
+        <div class="group-color-dot" style="background:${grp.color};box-shadow:0 0 0 3px ${grp.color}33"></div>
+        <div class="group-expiry">✓ ${dispExp}
+          <span style="font-size:.7rem;font-weight:500;color:var(--muted);margin-left:6px">${isoExp}</span>
+        </div>
+        <div class="group-count-badge"
+             style="background:${grp.color}22;color:${grp.color};border:1px solid ${grp.color}55">
+          ${grp.count}&nbsp;each${grp.count!==1?'es':''}
+        </div>
+        <div class="group-chevron" id="${chevId}">&#9660;</div>
+      </div>
+      <div class="group-body" id="${bodyId}">
+        ${grp.items.map(item=>`
+        <div class="each-item-row">
+          <div class="each-item-grid">
+            <div><div class="each-item-label">GTIN</div>
+                 <div class="each-item-val">${item.gtin||'—'}</div></div>
+            <div><div class="each-item-label">Serial</div>
+                 <div class="each-item-val">${item.serial||'—'}</div></div>
+            <div><div class="each-item-label">Lot / Batch</div>
+                 <div class="each-item-val">${item.lot||'—'}</div></div>
+            <div><div class="each-item-label">Expiry</div>
+                 <div class="each-item-val" style="color:${grp.color};font-weight:800">${dispExp}</div></div>
+          </div>
+        </div>`).join('')}
+      </div>`;
+    eachResultsPanel.appendChild(card);
+  });
+
+  // Open sheet to show results
+  openSheet();
+}
+
+window.toggleGroup=function(bodyId,chevId){
+  const body=document.getElementById(bodyId);
+  const chev=document.getElementById(chevId);
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+};
+
+/* Each Save */
+btnEachSave.addEventListener('click',()=>{
+  if(!lastScanResult){return;}
+  eachModalSub.textContent=`Total: ${lastScanResult.total} eaches · ${lastScanResult.groups.length} expiry groups`;
+  eachNoteInput.value='';
+  eachSaveModal.classList.add('open');
+  setTimeout(()=>eachNoteInput.focus(),50);
+});
+eachModalCancel.addEventListener('click',()=>eachSaveModal.classList.remove('open'));
+eachSaveModal.addEventListener('click',e=>{if(e.target===eachSaveModal)eachSaveModal.classList.remove('open');});
+eachNoteInput.addEventListener('keydown',e=>{if(e.key==='Enter')eachModalConfirm.click();});
+eachModalConfirm.addEventListener('click',async()=>{
+  eachSaveModal.classList.remove('open');
+  try{
+    const res=await fetch('/api/each/save',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scan_id:lastScanResult.scan_id,note:eachNoteInput.value.trim()})});
+    if(res.ok){
+      toast(`Each scan saved — ${lastScanResult.total} eaches, ${lastScanResult.groups.length} groups`,'success');
+      btnEachSave.disabled=true;
+    } else {
+      toast('Save failed','error');
+    }
+  }catch(e){toast('Network error','error');}
+});
+
+/* Clear results */
+btnEachClear.addEventListener('click',()=>{
+  lastScanResult=null;
+  eachResultsPanel.innerHTML=
+    `<div class="no-result" id="eachNoResult">
+       <div class="no-result-icon">&#128268;</div>
+       <div class="no-result-txt">Scan eaches to see GS1 results</div>
+     </div>`;
+  btnEachSave.disabled=true;
+  closeSheet();
+  toast('Results cleared','info');
+});
+
+/* Each upload */
+btnEachUploadTrig.addEventListener('click',()=>eachUploadInput.click());
+eachUploadInput.addEventListener('change',async()=>{
+  const file = eachUploadInput.files[0];
+  if(!file) return;
+  const fr = new FileReader();
+  fr.onload = async e=>{
+    const b64 = e.target.result.split(',')[1];
+    scanOverlay.classList.add('show');
+    openSheet();
+    try{
+      const res = await fetch('/api/each/scan',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({image_b64:b64})});
+      const data = await res.json();
+      lastScanResult = data;
+      btnEachSave.disabled = !data.total;
+      renderEachResults(data);
+      if(!data.total) toast('No barcodes found in image','info');
+    }catch(err){toast('Scan error: '+err.message,'error');}
+    finally{scanOverlay.classList.remove('show');}
+  };
+  fr.readAsDataURL(file);
+  eachUploadInput.value='';
+});
+
+/* Each History */
+async function loadEachHistory(){
+  try{
+    const data=await fetch('/api/each/sessions').then(r=>r.json());
+    renderEachHistory(data);
+  }catch(e){eachHistList.innerHTML='<p style="color:var(--red);font-size:.8rem">Failed to load</p>';}
+}
+
+function renderEachHistory(sessions){
+  eachHistEmpty.style.display=sessions.length?'none':'flex';
+  eachHistList.innerHTML='';
+  sessions.forEach(s=>{
+    const card=document.createElement('div');
+    card.className='each-hist-card';
+    const grpTags=(s.groups||[]).map(g=>`
+      <span class="ehc-grp-tag" style="background:${g.color}">
+        <span class="ehc-dot"></span>
+        ${g.expiry_display||g.expiry||'?'} (${g.count})
+      </span>`).join('');
+    const thumbHtml = s.annotated_img
+      ? `<img src="data:image/jpeg;base64,${s.annotated_img}"
+             style="width:100%;border-radius:8px;display:block;margin-bottom:8px;box-shadow:var(--shadow)"/>`
+      : '';
+    card.innerHTML=`
+      ${thumbHtml}
+      <div class="ehc-top">
+        <div class="ehc-total">${s.total}</div>
+        <div class="ehc-note${s.note?'':' empty'}">${s.note||'No label'}</div>
+        <button class="btn-del" data-id="${s.id}" title="Delete">&#215;</button>
+      </div>
+      <div class="ehc-grps">${grpTags||'<span style="font-size:.72rem;color:var(--muted)">No groups</span>'}</div>
+      <div class="ehc-meta">
+        <span class="sc-tag tag-time">${fmtDate(s.timestamp)}</span>
+        <span class="sc-tag" style="border-color:rgba(44,95,138,.3);color:var(--blue);background:var(--blue-lt)">${(s.groups||[]).length} groups</span>
+      </div>`;
+    card.querySelector('.btn-del').addEventListener('click',async function(){
+      await fetch('/api/each/sessions/'+this.dataset.id,{method:'DELETE'});
+      card.style.opacity='0';card.style.transition='opacity .25s';
+      setTimeout(()=>{card.remove();eachHistEmpty.style.display=eachHistList.children.length?'none':'flex';},250);
+      toast('Record deleted','info');
+    });
+    eachHistList.appendChild(card);
+  });
+}
+
+btnEachClearAll.addEventListener('click',async()=>{
+  if(!confirm('Delete all each scan history?')) return;
+  await fetch('/api/each/sessions',{method:'DELETE'});
+  eachHistList.innerHTML=''; eachHistEmpty.style.display='flex';
+  toast('History cleared','info');
+});
+
+/* ═══════════════════ MEDICINE BOX COUNTING ═══════════════════ */
+const btnBoxCapture   = document.getElementById('btnBoxCapture');
+const btnBoxUploadBtn = document.getElementById('btnBoxUpload');
+const boxFileInput    = document.getElementById('boxFileInput');
+const boxUploadInput  = document.getElementById('boxUploadInput');
+const boxPreviewWrap  = document.getElementById('boxPreviewWrap');
+const boxPreviewImg   = document.getElementById('boxPreviewImg');
+const boxConfSlider   = document.getElementById('boxConfSlider');
+const boxConfValEl    = document.getElementById('boxConfVal');
+const btnBoxAnalyse   = document.getElementById('btnBoxAnalyse');
+const btnBoxSave      = document.getElementById('btnBoxSave');
+const boxSpinner      = document.getElementById('boxSpinner');
+const boxResultWrap   = document.getElementById('boxResultWrap');
+const boxAnnotImg     = document.getElementById('boxAnnotImg');
+const boxAnnotLabel   = document.getElementById('boxAnnotLabel');
+const boxStatBar      = document.getElementById('boxStatBar');
+const boxCountsDetail = document.getElementById('boxCountsDetail');
+const boxSaveModal    = document.getElementById('boxSaveModal');
+const boxModalSub     = document.getElementById('boxModalSub');
+const boxNoteInput    = document.getElementById('boxNoteInput');
+const boxModalCancel  = document.getElementById('boxModalCancel');
+const boxModalConfirm = document.getElementById('boxModalConfirm');
+const boxHistList     = document.getElementById('boxHistList');
+const boxHistEmpty    = document.getElementById('boxHistEmpty');
+const btnBoxClearAll  = document.getElementById('btnBoxClearAll');
+
+let boxImageB64 = null;
+let lastBoxResult = null;
+
+function switchBoxTab(tab){
+  ['scan','history'].forEach(t=>{
+    const pg = t==='scan'?'boxScanPage':'boxHistoryPage';
+    const tb = t==='scan'?'boxTabScan':'boxTabHistory';
+    document.getElementById(pg).classList.toggle('active',t===tab);
+    document.getElementById(tb).classList.toggle('active',t===tab);
+  });
+  if(tab==='history') loadBoxHistory();
+}
+window.switchBoxTab = switchBoxTab;
+
+boxConfSlider.addEventListener('input',()=>{
+  boxConfValEl.textContent=(boxConfSlider.value/100).toFixed(2);
+});
+
+function loadBoxImage(file){
+  if(!file||!file.type.startsWith('image/')) return;
+  const fr=new FileReader();
+  fr.onload=e=>{
+    boxPreviewImg.src=e.target.result;
+    boxImageB64=e.target.result.split(',')[1];
+    boxPreviewWrap.style.display='block';
+    boxResultWrap.style.display='none';
+    btnBoxSave.disabled=true;
+    lastBoxResult=null;
+  };
+  fr.readAsDataURL(file);
+}
+
+btnBoxCapture.addEventListener('click',()=>boxFileInput.click());
+btnBoxUploadBtn.addEventListener('click',()=>boxUploadInput.click());
+boxFileInput.addEventListener('change',()=>loadBoxImage(boxFileInput.files[0]));
+boxUploadInput.addEventListener('change',()=>loadBoxImage(boxUploadInput.files[0]));
+
+btnBoxAnalyse.addEventListener('click',async()=>{
+  if(!boxImageB64){toast('Please select an image first','info');return;}
+  btnBoxAnalyse.disabled=true;
+  btnBoxAnalyse.textContent='Analysing…';
+  boxSpinner.style.display='flex';
+  boxResultWrap.style.display='none';
+  try{
+    const conf=parseFloat((boxConfSlider.value/100).toFixed(2));
+    const res=await fetch('/api/box/scan',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image_b64:boxImageB64,conf})});
+    const data=await res.json();
+    if(data.error){toast(data.error,'error');return;}
+    lastBoxResult=data;
+    // annotated image
+    boxAnnotImg.src='data:image/jpeg;base64,'+data.annotated_img;
+    boxAnnotLabel.textContent=`✓ ${data.total} item${data.total!==1?'s':''} detected`;
+    // stat chips
+    let statHtml=`<div class="stat-chip"><div class="stat-num">${data.total}</div><div class="stat-lbl">Total Items</div></div>`;
+    const entries=Object.entries(data.counts||{});
+    entries.forEach(([lbl,cnt])=>{
+      statHtml+=`<div class="stat-chip"><div class="stat-num" style="color:var(--green)">${cnt}</div><div class="stat-lbl">${lbl}</div></div>`;
+    });
+    boxStatBar.innerHTML=statHtml;
+    // detailed count cards
+    let detailHtml='';
+    if(entries.length>0){
+      detailHtml='<div class="grp-section-title" style="margin-bottom:8px">Item Breakdown</div>';
+      entries.forEach(([lbl,cnt])=>{
+        detailHtml+=`<div class="group-card" style="border-left:4px solid var(--green);margin-bottom:8px">
+          <div class="group-header" style="cursor:default">
+            <div class="group-color-dot" style="background:var(--green)"></div>
+            <div class="group-expiry">${lbl}</div>
+            <div class="group-count-badge" style="background:var(--green-lt);color:var(--green);border:1px solid rgba(15,157,88,.3)">
+              ${cnt} item${cnt!==1?'s':''}
+            </div>
+          </div>
+        </div>`;
+      });
+    }
+    boxCountsDetail.innerHTML=detailHtml;
+    boxResultWrap.style.display='flex';
+    btnBoxSave.disabled=false;
+    toast(`Detected ${data.total} item${data.total!==1?'s':''}`,data.total?'success':'info');
+  }catch(e){toast('Analysis failed: '+e.message,'error');}
+  finally{
+    boxSpinner.style.display='none';
+    btnBoxAnalyse.disabled=false;
+    btnBoxAnalyse.innerHTML='&#128269; Analyse';
+  }
+});
+
+btnBoxSave.addEventListener('click',()=>{
+  if(!lastBoxResult) return;
+  boxModalSub.textContent=`Total: ${lastBoxResult.total} items`;
+  boxNoteInput.value='';
+  boxSaveModal.classList.add('open');
+  setTimeout(()=>boxNoteInput.focus(),50);
+});
+boxModalCancel.addEventListener('click',()=>boxSaveModal.classList.remove('open'));
+boxSaveModal.addEventListener('click',e=>{if(e.target===boxSaveModal)boxSaveModal.classList.remove('open');});
+boxNoteInput.addEventListener('keydown',e=>{if(e.key==='Enter')boxModalConfirm.click();});
+boxModalConfirm.addEventListener('click',async()=>{
+  boxSaveModal.classList.remove('open');
+  try{
+    const res=await fetch('/api/box/save',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scan_id:lastBoxResult.scan_id,note:boxNoteInput.value.trim()})});
+    if(res.ok){
+      toast(`Box scan saved — ${lastBoxResult.total} items`,'success');
+      btnBoxSave.disabled=true;
+    } else toast('Save failed','error');
+  }catch(e){toast('Network error','error');}
+});
+
+async function loadBoxHistory(){
+  try{
+    const data=await fetch('/api/box/sessions').then(r=>r.json());
+    renderBoxHistory(data);
+  }catch(e){boxHistList.innerHTML='<p style="color:var(--red);font-size:.8rem">Failed to load</p>';}
+}
+
+function renderBoxHistory(sessions){
+  boxHistEmpty.style.display=sessions.length?'none':'flex';
+  boxHistList.innerHTML='';
+  sessions.forEach(s=>{
+    const card=document.createElement('div');
+    card.className='each-hist-card';
+    const entries=Object.entries(s.counts||{});
+    const countChips=entries.map(([lbl,cnt])=>
+      `<span class="ehc-grp-tag" style="background:var(--green)">
+         <span class="ehc-dot"></span>${lbl}: ${cnt}
+       </span>`).join('');
+    const thumbHtml = s.annotated_img
+      ? `<img src="data:image/jpeg;base64,${s.annotated_img}"
+             style="width:100%;border-radius:8px;display:block;margin-bottom:8px;box-shadow:var(--shadow)"/>`
+      : '';
+    card.innerHTML=`
+      ${thumbHtml}
+      <div class="ehc-top">
+        <div class="ehc-total">${s.total}</div>
+        <div class="ehc-note${s.note?'':' empty'}">${s.note||'No label'}</div>
+        <button class="btn-del" data-id="${s.id}" title="Delete">&#215;</button>
+      </div>
+      <div class="ehc-grps">${countChips||'<span style="font-size:.72rem;color:var(--muted)">No items</span>'}</div>
+      <div class="ehc-meta">
+        <span class="sc-tag tag-time">${fmtDate(s.timestamp)}</span>
+        <span class="sc-tag" style="border-color:rgba(15,157,88,.3);color:var(--green);background:var(--green-lt)">${entries.length} type${entries.length!==1?'s':''}</span>
+      </div>`;
+    card.querySelector('.btn-del').addEventListener('click',async function(){
+      await fetch('/api/box/sessions/'+this.dataset.id,{method:'DELETE'});
+      card.style.opacity='0';card.style.transition='opacity .25s';
+      setTimeout(()=>{card.remove();boxHistEmpty.style.display=boxHistList.children.length?'none':'flex';},250);
+      toast('Record deleted','info');
+    });
+    boxHistList.appendChild(card);
+  });
+}
+
+btnBoxClearAll.addEventListener('click',async()=>{
+  if(!confirm('Delete all box scan history?')) return;
+  await fetch('/api/box/sessions',{method:'DELETE'});
+  boxHistList.innerHTML=''; boxHistEmpty.style.display='flex';
+  toast('History cleared','info');
+});
+
+})();
+</script>
+</body>
+</html>
