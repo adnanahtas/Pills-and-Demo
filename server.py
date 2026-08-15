@@ -377,7 +377,6 @@ def parse_gs1(raw: str) -> dict:
                 candidate = s[pos:gs_end] if gs_end != -1 else s[pos:]
                 # Even without a GS separator, stop when a known AI appears
                 # e.g. serial "05747877...17262312 10AB12" — 17 and 10 are AIs
-                all_ais = set(GS1_FIXED.keys()) | set(GS1_VARIABLE.keys())
                 cut = len(candidate)
                 for look in range(1, len(candidate)):
                     found_cut = False
@@ -385,23 +384,23 @@ def parse_gs1(raw: str) -> dict:
                         if look + al > len(candidate):
                             continue
                         maybe_ai = candidate[look:look + al]
-                        if maybe_ai not in all_ais:
+                        # Only cut on fixed-length AIs — variable AIs (10,21,30)
+                        # cannot be validated and cause false cuts inside serial digits
+                        if maybe_ai not in GS1_FIXED:
                             continue
-                        # Validate fixed-length AIs: must have enough chars and
-                        # for expiry (17) the month must be 01-12
-                        if maybe_ai in GS1_FIXED:
-                            _, flen = GS1_FIXED[maybe_ai]
-                            after = candidate[look + al:]
-                            if len(after) < flen:
-                                continue   # not enough data → not a real AI here
-                            if maybe_ai == "17":
-                                mm = after[2:4]
-                                if not mm.isdigit() or not (1 <= int(mm) <= 12):
-                                    continue   # invalid month → false match
-                            if maybe_ai == "11":
-                                mm = after[2:4]
-                                if not mm.isdigit() or not (1 <= int(mm) <= 12):
-                                    continue
+                        _, flen = GS1_FIXED[maybe_ai]
+                        after = candidate[look + al:]
+                        if len(after) < flen:
+                            continue   # not enough data → not a real AI here
+                        # Validate date AIs: month must be 01-12
+                        if maybe_ai in ("17", "11"):
+                            mm = after[2:4]
+                            if not mm.isdigit() or not (1 <= int(mm) <= 12):
+                                continue
+                        # Validate year is digits
+                        yy = after[:2]
+                        if not yy.isdigit():
+                            continue
                         cut = look
                         found_cut = True
                         break

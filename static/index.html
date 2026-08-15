@@ -580,72 +580,77 @@ select{background:var(--surf2);color:var(--text);border:1.5px solid var(--border
     <span class="sub-title">Each Sorting</span>
   </div>
 
-  <!-- Full-screen camera (behind the sheet) -->
-  <div class="each-cam-wrap" id="eachCamWrap">
-    <video id="eachVideo" autoplay playsinline muted></video>
-    <canvas id="eachCanvas"></canvas>
-    <div class="each-cam-placeholder" id="eachPlaceholder">
-      <div class="each-ph-icon">📷</div>
-      <div class="each-ph-txt">Tap Camera to start live view</div>
-    </div>
-    <div class="scan-overlay" id="scanOverlay">
-      <div class="spinner"></div>
-      <div class="scan-overlay-txt">Scanning barcodes…</div>
+  <!-- Sub-tabs -->
+  <div style="flex-shrink:0;display:flex;background:var(--bg2);border-bottom:1px solid var(--border)">
+    <button class="nav-btn active" id="eachTabScan" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchEachTab('scan')"><span>📸 Capture / Upload</span></button>
+    <button class="nav-btn" id="eachTabHistory" style="flex:1;height:42px;font-size:.72rem"
+            onclick="switchEachTab('history')"><span>📋 History</span></button>
+  </div>
+
+  <!-- Scan tab -->
+  <div class="view-page active" id="eachScanPage" style="flex:1;overflow-y:auto">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+      <!-- Capture / Upload buttons -->
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-start" id="btnEachCapture" style="flex:1">
+          &#128247; Capture Photo
+        </button>
+        <button class="btn" id="btnEachUploadTrig"
+          style="flex:1;background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.3);color:var(--blue)">
+          &#128196; Upload Image
+        </button>
+      </div>
+      <input type="file" id="eachCaptureInput" accept="image/*" capture="environment" style="display:none"/>
+      <input type="file" id="eachUploadInput" accept="image/*" style="display:none"/>
+
+      <!-- Image preview -->
+      <div id="eachPreviewWrap" style="display:none">
+        <img id="eachPreviewImg" style="width:100%;border-radius:10px;display:block;box-shadow:var(--shadow)"/>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-start" id="btnEachScan" style="flex:1">
+            &#128269; Scan Barcodes
+          </button>
+          <button class="btn" id="btnEachSave" disabled
+            style="flex:0 0 auto;background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.35);color:var(--blue);padding:12px 16px">
+            &#128190; Save
+          </button>
+        </div>
+      </div>
+
+      <!-- Spinner -->
+      <div id="eachSpinner" style="display:none;align-items:center;justify-content:center;padding:32px;gap:12px">
+        <div class="spinner" style="border-top-color:var(--blue)"></div>
+        <span style="font-size:.84rem;color:var(--muted);font-weight:600">Scanning barcodes…</span>
+      </div>
+
+      <!-- Result -->
+      <div id="eachResultWrap" style="display:none;flex-direction:column;gap:12px">
+        <div class="annotated-wrap">
+          <span class="annotated-label" id="eachAnnotLabel"></span>
+          <img id="eachAnnotImg" style="width:100%;display:block"/>
+        </div>
+        <div class="stat-bar" id="eachStatBar"></div>
+        <div id="eachGroupsDetail"></div>
+      </div>
+
     </div>
   </div>
 
-  <!-- Bottom sheet (swipeable) -->
-  <div class="bottom-sheet" id="bottomSheet">
-
-    <!-- Drag handle -->
-    <div class="sheet-handle-area" id="sheetHandle">
-      <div class="sheet-handle"></div>
-    </div>
-
-    <!-- Controls row -->
-    <div class="each-controls">
-      <button class="btn-each btn-cam-start" id="btnEachCam">&#128247; Cam</button>
-      <button class="btn-each btn-scan" id="btnEachScan" disabled>&#128269; Scan</button>
-      <button class="btn-each" id="btnEachUploadTrig"
-        style="background:var(--surf2);border:1.5px solid var(--border);color:var(--muted);font-size:.75rem">
-        &#128196; Upload
-      </button>
-      <button class="btn-each btn-each-save" id="btnEachSave" disabled>&#128190; Save</button>
-      <button class="btn-each btn-each-clear" id="btnEachClear">&#215; Clear</button>
-    </div>
-    <input type="file" id="eachUploadInput" accept="image/*" style="display:none"/>
-
-    <!-- Sheet tabs -->
-    <div class="sheet-tab-row">
-      <button class="sheet-tab active" id="eachTabScan" onclick="switchEachTab('scan')">&#128269; Results</button>
-      <button class="sheet-tab" id="eachTabHistory" onclick="switchEachTab('history')">&#128203; History</button>
-    </div>
-
-    <!-- Scrollable content -->
-    <div class="sheet-content">
-
-      <!-- Scan results pane -->
-      <div class="sheet-pane active" id="eachScanPage">
-        <div class="no-result" id="eachNoResult">
-          <div class="no-result-icon">&#128268;</div>
-          <div class="no-result-txt">Scan eaches to see GS1 results</div>
-        </div>
+  <!-- History tab -->
+  <div class="view-page" id="eachHistoryPage" style="flex:1;overflow:hidden">
+    <div class="hist-wrap">
+      <div class="hist-topbar">
+        <span class="hist-title" style="color:var(--blue)">Each Scan History</span>
+        <button class="btn-clear" id="btnEachClearAll">Clear all</button>
       </div>
-
-      <!-- History pane -->
-      <div class="sheet-pane" id="eachHistoryPage">
-        <div class="hist-topbar">
-          <span class="hist-title" style="color:var(--blue)">Each Scan History</span>
-          <button class="btn-clear" id="btnEachClearAll">Clear all</button>
-        </div>
-        <div class="hist-empty" id="eachHistEmpty">
-          <div class="hist-empty-icon">📦</div>
-          <div>No saved each scans yet</div>
-          <div style="font-size:.72rem;color:var(--muted2)">Scan and save to build history</div>
-        </div>
-        <div id="eachHistList"></div>
+      <div class="hist-empty" id="eachHistEmpty">
+        <div class="hist-empty-icon">📦</div>
+        <div>No saved each scans yet</div>
+        <div style="font-size:.72rem;color:var(--muted2)">Scan and save to build history</div>
       </div>
-
+      <div id="eachHistList"></div>
     </div>
   </div>
 
@@ -853,7 +858,6 @@ window.openModule = function(mod){
 
 window.goHome = function(){
   stopPill();
-  stopEachCam();
   showTopPage('pageLanding');
   setStatus('','Ready');
   currentModule = null;
@@ -1192,29 +1196,31 @@ btnPillUploadSave.addEventListener('click',async()=>{
 });
 
 /* ═══════════════════ EACH SORTING ═══════════════════ */
-const eachVideo      = document.getElementById('eachVideo');
-const eachCanvas     = document.getElementById('eachCanvas');
-const eachPlaceholder= document.getElementById('eachPlaceholder');
-const scanOverlay    = document.getElementById('scanOverlay');
-const btnEachCam     = document.getElementById('btnEachCam');
-const btnEachScan    = document.getElementById('btnEachScan');
-const btnEachSave    = document.getElementById('btnEachSave');
-const btnEachClear   = document.getElementById('btnEachClear');
-const eachResultsPanel=document.getElementById('eachScanPage');  // sheet-pane
-const eachNoResult   = document.getElementById('eachNoResult');
-const eachSaveModal  = document.getElementById('eachSaveModal');
-const eachModalSub   = document.getElementById('eachModalSub');
-const eachNoteInput  = document.getElementById('eachNoteInput');
-const eachModalCancel= document.getElementById('eachModalCancel');
-const eachModalConfirm=document.getElementById('eachModalConfirm');
-const eachHistList   = document.getElementById('eachHistList');
-const eachHistEmpty  = document.getElementById('eachHistEmpty');
-const btnEachClearAll   = document.getElementById('btnEachClearAll');
+const btnEachCapture    = document.getElementById('btnEachCapture');
 const btnEachUploadTrig = document.getElementById('btnEachUploadTrig');
+const eachCaptureInput  = document.getElementById('eachCaptureInput');
 const eachUploadInput   = document.getElementById('eachUploadInput');
+const eachPreviewWrap   = document.getElementById('eachPreviewWrap');
+const eachPreviewImg    = document.getElementById('eachPreviewImg');
+const btnEachScan       = document.getElementById('btnEachScan');
+const btnEachSave       = document.getElementById('btnEachSave');
+const eachSpinner       = document.getElementById('eachSpinner');
+const eachResultWrap    = document.getElementById('eachResultWrap');
+const eachAnnotImg      = document.getElementById('eachAnnotImg');
+const eachAnnotLabel    = document.getElementById('eachAnnotLabel');
+const eachStatBar       = document.getElementById('eachStatBar');
+const eachGroupsDetail  = document.getElementById('eachGroupsDetail');
+const eachSaveModal     = document.getElementById('eachSaveModal');
+const eachModalSub      = document.getElementById('eachModalSub');
+const eachNoteInput     = document.getElementById('eachNoteInput');
+const eachModalCancel   = document.getElementById('eachModalCancel');
+const eachModalConfirm  = document.getElementById('eachModalConfirm');
+const eachHistList      = document.getElementById('eachHistList');
+const eachHistEmpty     = document.getElementById('eachHistEmpty');
+const btnEachClearAll   = document.getElementById('btnEachClearAll');
 
-let eachStream=null, eachRunning=false;
-let lastScanResult=null;
+let lastScanResult = null;
+let eachImageB64   = null;
 
 function switchEachTab(tab){
   ['scan','history'].forEach(t=>{
@@ -1224,140 +1230,47 @@ function switchEachTab(tab){
       .classList.toggle('active', t===tab);
   });
   if(tab==='history') loadEachHistory();
-  // open sheet when switching tabs
-  openSheet();
 }
 window.switchEachTab = switchEachTab;
 
-/* ── Bottom Sheet drag ── */
-const sheet    = document.getElementById('bottomSheet');
-const shHandle = document.getElementById('sheetHandle');
-let sheetOpen  = false;
-let dragStart  = null, dragStartY = null;
-
-function openSheet(){
-  sheet.style.transform = '';
-  sheet.classList.add('open');
-  sheetOpen = true;
-}
-function closeSheet(){
-  sheet.style.transform = '';
-  sheet.classList.remove('open');
-  sheetOpen = false;
-}
-function toggleSheet(){
-  sheetOpen ? closeSheet() : openSheet();
+function eachLoadImage(file){
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  eachPreviewImg.src = url;
+  eachPreviewWrap.style.display = 'block';
+  eachResultWrap.style.display  = 'none';
+  btnEachSave.disabled = true;
+  lastScanResult = null;
+  const fr = new FileReader();
+  fr.onload = e => { eachImageB64 = e.target.result.split(',')[1]; };
+  fr.readAsDataURL(file);
 }
 
-// Handle area tap toggles
-shHandle.addEventListener('click', toggleSheet);
+btnEachCapture.addEventListener('click', ()=> eachCaptureInput.click());
+btnEachUploadTrig.addEventListener('click', ()=> eachUploadInput.click());
+eachCaptureInput.addEventListener('change', ()=>{ eachLoadImage(eachCaptureInput.files[0]); eachCaptureInput.value=''; });
+eachUploadInput.addEventListener('change',  ()=>{ eachLoadImage(eachUploadInput.files[0]);  eachUploadInput.value=''; });
 
-// Touch drag
-shHandle.addEventListener('touchstart', e=>{
-  dragStartY = e.touches[0].clientY;
-  sheet.style.transition = 'none';
-},{ passive:true });
-document.addEventListener('touchmove', e=>{
-  if(dragStartY === null) return;
-  const dy = e.touches[0].clientY - dragStartY;
-  if(sheetOpen && dy > 0){  // dragging down when open
-    sheet.style.transform = `translateY(${dy}px)`;
-  } else if(!sheetOpen && dy < 0){  // dragging up when closed
-    const peek = parseInt(getComputedStyle(sheet).getPropertyValue('--sheet-peek'))||130;
-    sheet.style.transform = `translateY(calc(100% - ${peek}px + ${dy}px))`;
-  }
-},{ passive:true });
-document.addEventListener('touchend', e=>{
-  if(dragStartY === null) return;
-  const dy = e.changedTouches[0].clientY - dragStartY;
-  sheet.style.transition = '';
-  if(sheetOpen && dy > 80)        closeSheet();
-  else if(!sheetOpen && dy < -50) openSheet();
-  else sheet.style.transform = '';  // snap back
-  dragStartY = null;
-},{ passive:true });
-
-// Mouse drag (desktop)
-shHandle.addEventListener('mousedown', e=>{
-  dragStartY = e.clientY;
-  sheet.style.transition = 'none';
-});
-document.addEventListener('mousemove', e=>{
-  if(dragStartY === null) return;
-  const dy = e.clientY - dragStartY;
-  if(sheetOpen && dy > 0) sheet.style.transform = `translateY(${dy}px)`;
-  else if(!sheetOpen && dy < 0){
-    const peek = parseInt(getComputedStyle(sheet).getPropertyValue('--sheet-peek'))||130;
-    sheet.style.transform = `translateY(calc(100% - ${peek}px + ${dy}px))`;
-  }
-});
-document.addEventListener('mouseup', e=>{
-  if(dragStartY === null) return;
-  const dy = e.clientY - dragStartY;
-  sheet.style.transition = '';
-  if(sheetOpen && dy > 80)        closeSheet();
-  else if(!sheetOpen && dy < -50) openSheet();
-  else sheet.style.transform = '';
-  dragStartY = null;
-});
-
-function stopEachCam(){
-  eachRunning=false;
-  if(eachStream){eachStream.getTracks().forEach(t=>t.stop());eachStream=null;}
-  eachVideo.srcObject=null;
-  eachPlaceholder.style.display='flex';
-  btnEachCam.textContent='📷 Cam';
-  btnEachScan.disabled=true;
-}
-
-btnEachCam.addEventListener('click',async()=>{
-  if(eachRunning){ stopEachCam(); return; }
+btnEachScan.addEventListener('click', async()=>{
+  if(!eachImageB64){ toast('Load an image first','info'); return; }
+  eachSpinner.style.display    = 'flex';
+  eachResultWrap.style.display = 'none';
+  btnEachScan.disabled = true;
   try{
-    eachStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'},width:{ideal:1920}},audio:false});
-    eachVideo.srcObject=eachStream;
-    await eachVideo.play();
-    eachRunning=true;
-    eachPlaceholder.style.display='none';
-    btnEachCam.textContent='⏹ Stop Cam';
-    btnEachScan.disabled=false;
-    setStatus('live','Camera Live');
-  }catch(err){toast('Camera error: '+err.message,'error');}
-});
-
-btnEachScan.addEventListener('click',async()=>{
-  if(!eachRunning){ toast('Start camera first','info'); return; }
-
-  /* Capture frame from video */
-  const captureCanvas=document.createElement('canvas');
-  captureCanvas.width=eachVideo.videoWidth;
-  captureCanvas.height=eachVideo.videoHeight;
-  captureCanvas.getContext('2d').drawImage(eachVideo,0,0);
-
-  /* Show spinner */
-  scanOverlay.classList.add('show');
-  btnEachScan.disabled=true;
-
-  try{
-    const blob=await new Promise(res=>captureCanvas.toBlob(res,'image/jpeg',0.92));
-    const b64=await blobToBase64(blob);
-
-    const resp=await fetch('/api/each/scan',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({image_b64:b64})
-    });
-    const result=await resp.json();
-    lastScanResult=result;
-    renderEachResults(result);
-    btnEachSave.disabled=false;
-    toast(`Found ${result.total} barcode${result.total!==1?'s':''} in ${result.groups.length} expiry group${result.groups.length!==1?'s':''}`,
-      result.total>0?'success':'info');
-  }catch(e){
-    toast('Scan error: '+e.message,'error');
-  }finally{
-    scanOverlay.classList.remove('show');
-    btnEachScan.disabled=false;
+    const resp = await fetch('/api/each/scan',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({image_b64: eachImageB64})});
+    const data = await resp.json();
+    lastScanResult = data;
+    renderEachResults(data);
+    btnEachSave.disabled = !data.total;
+    toast(data.total
+      ? `Found ${data.total} barcode${data.total!==1?'s':''} · ${data.groups.length} expiry group${data.groups.length!==1?'s':''}`
+      : 'No barcodes detected', data.total?'success':'info');
+  }catch(e){ toast('Scan error: '+e.message,'error'); }
+  finally{
+    eachSpinner.style.display = 'none';
+    btnEachScan.disabled = false;
   }
 });
 
@@ -1387,110 +1300,69 @@ const GROUP_COLORS = [
 ];
 
 function renderEachResults(data){
-  eachResultsPanel.innerHTML='';
-
   if(!data.total){
-    eachResultsPanel.innerHTML=
-      `<div class="no-result"><div class="no-result-icon">&#128268;</div>
-       <div class="no-result-txt">No barcodes detected — try better lighting</div></div>`;
-    // open sheet to show result
-    openSheet();
+    eachResultWrap.style.display = 'none';
     return;
   }
 
-  // Re-assign vivid colours by group index (overrides server colour)
   data.groups.forEach((grp,i)=>{ grp.color = GROUP_COLORS[i % GROUP_COLORS.length]; });
-  // Also sync color_map for annotated image (already rendered server-side, this is for UI only)
 
   /* Annotated image */
   if(data.annotated_img){
-    const wrap=document.createElement('div');
-    wrap.className='annotated-wrap';
-    wrap.innerHTML=`<span class="annotated-label">✓ ${data.total} barcode${data.total!==1?'s':''} · ${data.groups.length} expiry group${data.groups.length!==1?'s':''}</span>
-                    <img src="data:image/jpeg;base64,${data.annotated_img}" alt="annotated"/>`;
-    eachResultsPanel.appendChild(wrap);
+    eachAnnotImg.src = `data:image/jpeg;base64,${data.annotated_img}`;
+    eachAnnotLabel.textContent = `✓ ${data.total} barcode${data.total!==1?'s':''} · ${data.groups.length} expiry group${data.groups.length!==1?'s':''}`;
   }
 
-  /* Summary stat chips */
+  /* Stat chips */
   const uniqueGtins = new Set(data.groups.flatMap(g=>g.items.map(i=>i.gtin).filter(Boolean))).size;
-  const statBar=document.createElement('div');
-  statBar.className='stat-bar';
-  statBar.innerHTML=`
-    <div class="stat-chip">
-      <div class="stat-num">${data.total}</div>
-      <div class="stat-lbl">Eaches</div>
-    </div>
-    <div class="stat-chip">
-      <div class="stat-num" style="color:var(--blue)">${data.groups.length}</div>
-      <div class="stat-lbl">Exp. Groups</div>
-    </div>
-    <div class="stat-chip">
-      <div class="stat-num" style="color:var(--green)">${uniqueGtins||'—'}</div>
-      <div class="stat-lbl">Unique GTINs</div>
-    </div>`;
-  eachResultsPanel.appendChild(statBar);
+  eachStatBar.innerHTML=`
+    <div class="stat-chip"><div class="stat-num">${data.total}</div><div class="stat-lbl">Eaches</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:var(--blue)">${data.groups.length}</div><div class="stat-lbl">Exp. Groups</div></div>
+    <div class="stat-chip"><div class="stat-num" style="color:var(--green)">${uniqueGtins||'—'}</div><div class="stat-lbl">Unique GTINs</div></div>`;
 
-  /* Colour legend bar */
+  /* Group cards */
+  eachGroupsDetail.innerHTML = '';
+
   const colorBar = document.createElement('div');
   colorBar.className = 'expiry-color-bar';
   colorBar.innerHTML = data.groups.map(grp=>{
     const disp = grp.expiry_display || grp.expiry || '?';
-    return `<div class="ecb-chip" style="background:${grp.color}">
-      <div class="ecb-dot"></div>${disp} &times;${grp.count}
-    </div>`;
+    return `<div class="ecb-chip" style="background:${grp.color}"><div class="ecb-dot"></div>${disp} &times;${grp.count}</div>`;
   }).join('');
-  eachResultsPanel.appendChild(colorBar);
+  eachGroupsDetail.appendChild(colorBar);
 
-  /* Section title */
   const grpTitle=document.createElement('div');
   grpTitle.className='grp-section-title';
   grpTitle.textContent='Expiry Groups';
-  eachResultsPanel.appendChild(grpTitle);
+  eachGroupsDetail.appendChild(grpTitle);
 
-  /* Group cards */
   data.groups.forEach((grp,gi)=>{
     const card=document.createElement('div');
     card.className='group-card';
     card.style.borderLeftColor = grp.color;
-    const bodyId=`grpBody_${gi}`;
-    const chevId=`grpChev_${gi}`;
+    const bodyId=`grpBody_${gi}`, chevId=`grpChev_${gi}`;
     const dispExp = grp.expiry_display || grp.expiry || 'Unknown';
-    const isoExp  = grp.expiry
-      ? new Date(grp.expiry).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})
-      : 'Unknown';
-
+    const isoExp  = grp.expiry ? new Date(grp.expiry).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : 'Unknown';
     card.innerHTML=`
       <div class="group-header" onclick="toggleGroup('${bodyId}','${chevId}')">
         <div class="group-color-dot" style="background:${grp.color};box-shadow:0 0 0 3px ${grp.color}33"></div>
-        <div class="group-expiry">✓ ${dispExp}
-          <span style="font-size:.7rem;font-weight:500;color:var(--muted);margin-left:6px">${isoExp}</span>
-        </div>
-        <div class="group-count-badge"
-             style="background:${grp.color}22;color:${grp.color};border:1px solid ${grp.color}55">
-          ${grp.count}&nbsp;each${grp.count!==1?'es':''}
-        </div>
+        <div class="group-expiry">✓ ${dispExp}<span style="font-size:.7rem;font-weight:500;color:var(--muted);margin-left:6px">${isoExp}</span></div>
+        <div class="group-count-badge" style="background:${grp.color}22;color:${grp.color};border:1px solid ${grp.color}55">${grp.count}&nbsp;each${grp.count!==1?'es':''}</div>
         <div class="group-chevron" id="${chevId}">&#9660;</div>
       </div>
       <div class="group-body" id="${bodyId}">
         ${grp.items.map(item=>`
-        <div class="each-item-row">
-          <div class="each-item-grid">
-            <div><div class="each-item-label">GTIN</div>
-                 <div class="each-item-val">${item.gtin||'—'}</div></div>
-            <div><div class="each-item-label">Serial</div>
-                 <div class="each-item-val">${item.serial||'—'}</div></div>
-            <div><div class="each-item-label">Lot / Batch</div>
-                 <div class="each-item-val">${item.lot||'—'}</div></div>
-            <div><div class="each-item-label">Expiry</div>
-                 <div class="each-item-val" style="color:${grp.color};font-weight:800">${dispExp}</div></div>
-          </div>
-        </div>`).join('')}
+        <div class="each-item-row"><div class="each-item-grid">
+          <div><div class="each-item-label">GTIN</div><div class="each-item-val">${item.gtin||'—'}</div></div>
+          <div><div class="each-item-label">Serial</div><div class="each-item-val">${item.serial||'—'}</div></div>
+          <div><div class="each-item-label">Lot / Batch</div><div class="each-item-val">${item.lot||'—'}</div></div>
+          <div><div class="each-item-label">Expiry</div><div class="each-item-val" style="color:${grp.color};font-weight:800">${dispExp}</div></div>
+        </div></div>`).join('')}
       </div>`;
-    eachResultsPanel.appendChild(card);
+    eachGroupsDetail.appendChild(card);
   });
 
-  // Open sheet to show results
-  openSheet();
+  eachResultWrap.style.display = 'flex';
 }
 
 window.toggleGroup=function(bodyId,chevId){
@@ -1502,7 +1374,7 @@ window.toggleGroup=function(bodyId,chevId){
 
 /* Each Save */
 btnEachSave.addEventListener('click',()=>{
-  if(!lastScanResult){return;}
+  if(!lastScanResult) return;
   eachModalSub.textContent=`Total: ${lastScanResult.total} eaches · ${lastScanResult.groups.length} expiry groups`;
   eachNoteInput.value='';
   eachSaveModal.classList.add('open');
@@ -1520,49 +1392,8 @@ eachModalConfirm.addEventListener('click',async()=>{
     if(res.ok){
       toast(`Each scan saved — ${lastScanResult.total} eaches, ${lastScanResult.groups.length} groups`,'success');
       btnEachSave.disabled=true;
-    } else {
-      toast('Save failed','error');
-    }
+    } else toast('Save failed','error');
   }catch(e){toast('Network error','error');}
-});
-
-/* Clear results */
-btnEachClear.addEventListener('click',()=>{
-  lastScanResult=null;
-  eachResultsPanel.innerHTML=
-    `<div class="no-result" id="eachNoResult">
-       <div class="no-result-icon">&#128268;</div>
-       <div class="no-result-txt">Scan eaches to see GS1 results</div>
-     </div>`;
-  btnEachSave.disabled=true;
-  closeSheet();
-  toast('Results cleared','info');
-});
-
-/* Each upload */
-btnEachUploadTrig.addEventListener('click',()=>eachUploadInput.click());
-eachUploadInput.addEventListener('change',async()=>{
-  const file = eachUploadInput.files[0];
-  if(!file) return;
-  const fr = new FileReader();
-  fr.onload = async e=>{
-    const b64 = e.target.result.split(',')[1];
-    scanOverlay.classList.add('show');
-    openSheet();
-    try{
-      const res = await fetch('/api/each/scan',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({image_b64:b64})});
-      const data = await res.json();
-      lastScanResult = data;
-      btnEachSave.disabled = !data.total;
-      renderEachResults(data);
-      if(!data.total) toast('No barcodes found in image','info');
-    }catch(err){toast('Scan error: '+err.message,'error');}
-    finally{scanOverlay.classList.remove('show');}
-  };
-  fr.readAsDataURL(file);
-  eachUploadInput.value='';
 });
 
 /* Each History */
