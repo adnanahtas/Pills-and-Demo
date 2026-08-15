@@ -519,8 +519,8 @@ def scan_barcodes_from_image(img_bytes: bytes) -> list:
                      "DATAMATRIX")
             if results:
                 break   # stop trying variants once we have detections
-    except ImportError:
-        print("[WARN] pylibdmtx not installed — DataMatrix scanning unavailable")
+    except Exception as _dmtx_err:
+        print(f"[WARN] pylibdmtx error — DataMatrix scanning unavailable: {_dmtx_err}")
 
     # ── pyzbar (QR, Code128, EAN13 — does NOT support DataMatrix) ───────
     try:
