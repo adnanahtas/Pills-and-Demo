@@ -446,26 +446,88 @@ def _expiry_display(yymmdd: str) -> str:
     return f"{yymmdd[2:4]}/{('20' if int(yymmdd[:2])<=49 else '19')+yymmdd[:2]}"
 
 
+def _dmtx_scan_gray(gray, scale=1.0, timeout=800):
+    """Run pylibdmtx on a grayscale image, optionally upscaled. Returns raw results."""
+    from pylibdmtx.pylibdmtx import decode as dmtx_decode
+    if scale != 1.0:
+        h, w = gray.shape[:2]
+        gray = cv2.resize(gray, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
+    return dmtx_decode(gray, timeout=timeout), scale
+
+
 def scan_barcodes_from_image(img_bytes: bytes) -> list:
     """
     Decode DataMatrix / QR / other barcodes from image bytes.
-    Uses pyzbar with fallback to OpenCV QR detector.
-    Returns list of dicts: {data, polygon, rect}
+    Primary: pylibdmtx (DataMatrix) + pyzbar (QR/Code128).
+    Fallback: OpenCV QR detector.
+    Returns list of dicts: {data, polygon, rect, type}
     """
     arr   = np.frombuffer(img_bytes, np.uint8)
     frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if frame is None:
         return []
 
+    img_h = frame.shape[0]
     results = []
+    seen_data = set()   # deduplicate by raw data string
 
-    # ── pyzbar (QR, Code128, EAN13, …; zbar does NOT support DataMatrix) ──
+    def _add(data, polygon, rect, sym_type):
+        if data and data not in seen_data:
+            seen_data.add(data)
+            results.append({"data": data, "polygon": polygon, "rect": rect, "type": sym_type})
+
+    # ── pylibdmtx — DataMatrix (primary for GS1 DataMatrix barcodes) ────
+    try:
+        from pylibdmtx.pylibdmtx import decode as dmtx_decode  # noqa: F401
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Try multiple preprocessing variants to maximize detection rate
+        candidates = [gray]
+        # Upscale small images for better detection
+        h, w = gray.shape[:2]
+        if max(h, w) < 1200:
+            candidates.append(cv2.resize(gray, (w * 2, h * 2), interpolation=cv2.INTER_CUBIC))
+        # CLAHE contrast enhancement
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        candidates.append(clahe.apply(gray))
+        # Sharpened
+        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+        candidates.append(cv2.filter2D(gray, -1, kernel))
+
+        for i, img_variant in enumerate(candidates):
+            scale = img_variant.shape[0] / img_h   # ratio to map coords back
+            try:
+                dm_results = dmtx_decode(img_variant, timeout=800)
+            except Exception:
+                continue
+            for sym in dm_results:
+                try:
+                    data = sym.data.decode("utf-8", errors="replace")
+                except Exception:
+                    data = str(sym.data)
+                if data in seen_data:
+                    continue
+                # pylibdmtx rect origin is bottom-left; convert to top-left image coords
+                x  = int(sym.rect.left  / scale)
+                w2 = int(sym.rect.width  / scale)
+                h2 = int(sym.rect.height / scale)
+                y_bl = int(sym.rect.top / scale)
+                top  = img_h - y_bl - h2
+                polygon = [(x, top), (x+w2, top), (x+w2, top+h2), (x, top+h2)]
+                _add(data, polygon,
+                     {"left": x, "top": top, "width": w2, "height": h2},
+                     "DATAMATRIX")
+            if results:
+                break   # stop trying variants once we have detections
+    except ImportError:
+        print("[WARN] pylibdmtx not installed — DataMatrix scanning unavailable")
+
+    # ── pyzbar (QR, Code128, EAN13 — does NOT support DataMatrix) ───────
     try:
         from pyzbar.pyzbar import decode as pyzbar_decode
         from pyzbar.pyzbar import ZBarSymbol
         decoded = pyzbar_decode(frame, symbols=[
-            ZBarSymbol.QRCODE,
-            ZBarSymbol.CODE128, ZBarSymbol.EAN13,
+            ZBarSymbol.QRCODE, ZBarSymbol.CODE128, ZBarSymbol.EAN13,
         ])
         for sym in decoded:
             try:
@@ -474,71 +536,34 @@ def scan_barcodes_from_image(img_bytes: bytes) -> list:
                 data = str(sym.data)
             polygon = [(p.x, p.y) for p in sym.polygon]
             rect    = sym.rect
-            results.append({
-                "data":    data,
-                "polygon": polygon,
-                "rect":    {"left": rect.left, "top": rect.top,
-                            "width": rect.width, "height": rect.height},
-                "type":    sym.type.name,
-            })
+            _add(data, polygon,
+                 {"left": rect.left, "top": rect.top,
+                  "width": rect.width, "height": rect.height},
+                 sym.type.name)
     except ImportError:
         pass
 
-    # ── pylibdmtx — DataMatrix decoder ──────────────────────────────────
-    try:
-        from pylibdmtx.pylibdmtx import decode as dmtx_decode
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        dm_results = dmtx_decode(gray, timeout=500)
-        for sym in dm_results:
-            try:
-                data = sym.data.decode("utf-8", errors="replace")
-            except Exception:
-                data = str(sym.data)
-            x, y, w2, h2 = sym.rect.left, sym.rect.top, sym.rect.width, sym.rect.height
-            # pylibdmtx rect origin is bottom-left; flip y for image coords
-            img_h = frame.shape[0]
-            top   = img_h - y - h2
-            polygon = [
-                (x,      top),
-                (x + w2, top),
-                (x + w2, top + h2),
-                (x,      top + h2),
-            ]
-            results.append({
-                "data":    data,
-                "polygon": polygon,
-                "rect":    {"left": x, "top": top, "width": w2, "height": h2},
-                "type":    "DATAMATRIX",
-            })
-    except ImportError:
-        pass
-
-    # ── OpenCV QR fallback ──────────────────────────────────────────────
+    # ── OpenCV QR fallback (only if nothing found above) ────────────────
     if not results:
-        qr = cv2.QRCodeDetector()
-        # detectAndDecodeMulti returns 3 values in older OpenCV, 4 in newer
         try:
+            qr   = cv2.QRCodeDetector()
             _res = qr.detectAndDecodeMulti(frame)
             if len(_res) == 4:
-                _, data, points, *_ = _res
+                _, data_list, points, *_ = _res
             else:
-                data, points, *_ = _res
+                data_list, points, *_ = _res
+            if data_list and points is not None:
+                for d, pts in zip(data_list, points):
+                    if d:
+                        pts_int = pts.astype(int).tolist()
+                        xs = [p[0] for p in pts_int]
+                        ys = [p[1] for p in pts_int]
+                        _add(d, [(p[0], p[1]) for p in pts_int],
+                             {"left": min(xs), "top": min(ys),
+                              "width": max(xs)-min(xs), "height": max(ys)-min(ys)},
+                             "QR")
         except Exception:
-            data, points = [], None
-        if data and points is not None:
-            for d, pts in zip(data, points):
-                if d:
-                    pts_int = pts.astype(int).tolist()
-                    xs = [p[0] for p in pts_int]
-                    ys = [p[1] for p in pts_int]
-                    results.append({
-                        "data":    d,
-                        "polygon": [(p[0], p[1]) for p in pts_int],
-                        "rect":    {"left": min(xs), "top": min(ys),
-                                    "width": max(xs)-min(xs),
-                                    "height": max(ys)-min(ys)},
-                        "type":    "QR",
-                    })
+            pass
 
     return results
 
