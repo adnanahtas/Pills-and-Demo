@@ -516,7 +516,15 @@ def scan_barcodes_from_image(img_bytes: bytes) -> list:
     # ── OpenCV QR fallback ──────────────────────────────────────────────
     if not results:
         qr = cv2.QRCodeDetector()
-        data, points, _ = qr.detectAndDecodeMulti(frame)
+        # detectAndDecodeMulti returns 3 values in older OpenCV, 4 in newer
+        try:
+            _res = qr.detectAndDecodeMulti(frame)
+            if len(_res) == 4:
+                _, data, points, *_ = _res
+            else:
+                data, points, *_ = _res
+        except Exception:
+            data, points = [], None
         if data and points is not None:
             for d, pts in zip(data, points):
                 if d:
