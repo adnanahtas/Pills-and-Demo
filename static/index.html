@@ -589,50 +589,69 @@ select{background:var(--surf2);color:var(--text);border:1.5px solid var(--border
   </div>
 
   <!-- Scan tab -->
-  <div class="view-page active" id="eachScanPage" style="flex:1;overflow-y:auto">
-    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
-
-      <!-- Capture / Upload buttons -->
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-start" id="btnEachCapture" style="flex:1">
-          &#128247; Capture Photo
-        </button>
-        <button class="btn" id="btnEachUploadTrig"
-          style="flex:1;background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.3);color:var(--blue)">
-          &#128196; Upload Image
-        </button>
+  <div class="view-page active" id="eachScanPage" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    
+    <!-- Camera preview area -->
+    <div class="camera-wrap" id="eachCameraWrap">
+      <video id="eachVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain;display:none"></video>
+      <canvas id="eachCanvas" style="max-width:100%;max-height:100%;display:block;object-fit:contain"></canvas>
+      <div id="eachPlaceholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:linear-gradient(135deg,#0d1829 0%,#0a1520 100%)">
+        <div style="font-size:3rem;opacity:.25">📷</div>
+        <div style="font-size:.85rem;color:rgba(255,255,255,.4);font-weight:500">Tap <strong>Start Camera</strong> to begin</div>
       </div>
-      <input type="file" id="eachCaptureInput" accept="image/*" capture="environment" style="display:none"/>
-      <input type="file" id="eachUploadInput" accept="image/*" style="display:none"/>
+    </div>
 
-      <!-- Image preview -->
-      <div id="eachPreviewWrap" style="display:none">
-        <img id="eachPreviewImg" style="width:100%;border-radius:10px;display:block;box-shadow:var(--shadow)"/>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-start" id="btnEachScan" style="flex:1">
-            &#128269; Scan Barcodes
-          </button>
-          <button class="btn" id="btnEachSave" disabled
-            style="flex:0 0 auto;background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.35);color:var(--blue);padding:12px 16px">
-            &#128190; Save
-          </button>
+    <!-- Controls bar -->
+    <div class="ctrl-bar" style="padding:10px 14px">
+      <!-- Camera controls -->
+      <div id="eachCameraControls" style="display:flex;gap:8px">
+        <button class="btn btn-start" id="btnEachStartCam" style="flex:1">&#9654; Start Camera</button>
+        <button class="btn btn-stop" id="btnEachStopCam" disabled style="flex:1">&#9632; Stop</button>
+        <button class="btn" id="btnEachCaptureFrame" disabled style="flex:1;background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.35);color:var(--blue)">&#128247; Capture Frame</button>
+        <button class="btn" id="btnEachDirectUpload" style="flex:1;background:var(--surf2);border:1.5px solid var(--border);color:var(--muted)">&#128196; Upload Image</button>
+      </div>
+      
+      <!-- Captured image controls -->
+      <div id="eachCapturedControls" style="display:none;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="btnEachRetake" style="flex:1;background:var(--surf2);border:1.5px solid var(--border);color:var(--muted)">&#8635; Retake</button>
+          <button class="btn btn-start" id="btnEachScan" style="flex:1">&#128269; Scan Barcodes</button>
         </div>
+        <button class="btn" id="btnEachUploadTrig" style="background:var(--blue-lt);border:1.5px solid rgba(44,95,138,.3);color:var(--blue)">&#128196; Upload Image Instead</button>
       </div>
+      
+      <!-- Upload-only controls (fallback) -->
+      <div id="eachUploadControls" style="display:none;flex-direction:column;gap:10px">
+        <button class="btn" id="btnEachBackToCam" style="background:var(--surf2);border:1.5px solid var(--border);color:var(--muted)">&#8592; Back to Camera</button>
+      </div>
+    </div>
 
+    <!-- Hidden file inputs -->
+    <input type="file" id="eachUploadInput" accept="image/*" style="display:none"/>
+
+    <!-- Result overlay (shows on top of camera/canvas) -->
+    <div id="eachResultOverlay" style="position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;overflow-y:auto;z-index:10">
       <!-- Spinner -->
-      <div id="eachSpinner" style="display:none;align-items:center;justify-content:center;padding:32px;gap:12px">
+      <div id="eachSpinner" style="display:none;align-items:center;justify-content:center;padding:32px;gap:12px;flex:1">
         <div class="spinner" style="border-top-color:var(--blue)"></div>
         <span style="font-size:.84rem;color:var(--muted);font-weight:600">Scanning barcodes…</span>
       </div>
 
       <!-- Result -->
-      <div id="eachResultWrap" style="display:none;flex-direction:column;gap:12px">
+      <div id="eachResultWrap" style="display:none;flex-direction:column;gap:12px;padding:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <button class="btn" id="btnEachBackToCapture" style="flex:0 0 auto;padding:8px 12px;background:var(--surf2);border:1.5px solid var(--border);color:var(--muted)">&#8592; Back</button>
+          <span style="font-size:.9rem;font-weight:700;color:var(--text)">Scan Results</span>
+        </div>
         <div class="annotated-wrap">
           <span class="annotated-label" id="eachAnnotLabel"></span>
           <img id="eachAnnotImg" style="width:100%;display:block"/>
         </div>
         <div class="stat-bar" id="eachStatBar"></div>
         <div id="eachGroupsDetail"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-save" id="btnEachSave" style="flex:1">&#128190; Save Result</button>
+        </div>
       </div>
 
     </div>
@@ -1196,31 +1215,45 @@ btnPillUploadSave.addEventListener('click',async()=>{
 });
 
 /* ═══════════════════ EACH SORTING ═══════════════════ */
-const btnEachCapture    = document.getElementById('btnEachCapture');
-const btnEachUploadTrig = document.getElementById('btnEachUploadTrig');
-const eachCaptureInput  = document.getElementById('eachCaptureInput');
-const eachUploadInput   = document.getElementById('eachUploadInput');
-const eachPreviewWrap   = document.getElementById('eachPreviewWrap');
-const eachPreviewImg    = document.getElementById('eachPreviewImg');
-const btnEachScan       = document.getElementById('btnEachScan');
-const btnEachSave       = document.getElementById('btnEachSave');
-const eachSpinner       = document.getElementById('eachSpinner');
-const eachResultWrap    = document.getElementById('eachResultWrap');
-const eachAnnotImg      = document.getElementById('eachAnnotImg');
-const eachAnnotLabel    = document.getElementById('eachAnnotLabel');
-const eachStatBar       = document.getElementById('eachStatBar');
-const eachGroupsDetail  = document.getElementById('eachGroupsDetail');
-const eachSaveModal     = document.getElementById('eachSaveModal');
-const eachModalSub      = document.getElementById('eachModalSub');
-const eachNoteInput     = document.getElementById('eachNoteInput');
-const eachModalCancel   = document.getElementById('eachModalCancel');
-const eachModalConfirm  = document.getElementById('eachModalConfirm');
-const eachHistList      = document.getElementById('eachHistList');
-const eachHistEmpty     = document.getElementById('eachHistEmpty');
-const btnEachClearAll   = document.getElementById('btnEachClearAll');
+const eachVideo           = document.getElementById('eachVideo');
+const eachCanvas          = document.getElementById('eachCanvas');
+const eachCtx             = eachCanvas.getContext('2d');
+const eachPlaceholder     = document.getElementById('eachPlaceholder');
+const btnEachStartCam     = document.getElementById('btnEachStartCam');
+const btnEachStopCam      = document.getElementById('btnEachStopCam');
+const btnEachCaptureFrame = document.getElementById('btnEachCaptureFrame');
+const btnEachDirectUpload = document.getElementById('btnEachDirectUpload');
+const btnEachRetake       = document.getElementById('btnEachRetake');
+const btnEachUploadTrig   = document.getElementById('btnEachUploadTrig');
+const btnEachBackToCam    = document.getElementById('btnEachBackToCam');
+const eachUploadInput     = document.getElementById('eachUploadInput');
+const btnEachScan         = document.getElementById('btnEachScan');
+const btnEachSave         = document.getElementById('btnEachSave');
+const eachSpinner         = document.getElementById('eachSpinner');
+const eachResultWrap      = document.getElementById('eachResultWrap');
+const eachAnnotImg        = document.getElementById('eachAnnotImg');
+const eachAnnotLabel      = document.getElementById('eachAnnotLabel');
+const eachStatBar         = document.getElementById('eachStatBar');
+const eachGroupsDetail    = document.getElementById('eachGroupsDetail');
+const eachSaveModal       = document.getElementById('eachSaveModal');
+const eachModalSub        = document.getElementById('eachModalSub');
+const eachNoteInput       = document.getElementById('eachNoteInput');
+const eachModalCancel     = document.getElementById('eachModalCancel');
+const eachModalConfirm    = document.getElementById('eachModalConfirm');
+const eachHistList        = document.getElementById('eachHistList');
+const eachHistEmpty       = document.getElementById('eachHistEmpty');
+const btnEachClearAll     = document.getElementById('btnEachClearAll');
+const eachCameraControls  = document.getElementById('eachCameraControls');
+const eachCapturedControls = document.getElementById('eachCapturedControls');
+const eachUploadControls  = document.getElementById('eachUploadControls');
+const eachResultOverlay    = document.getElementById('eachResultOverlay');
+const btnEachBackToCapture = document.getElementById('btnEachBackToCapture');
 
 let lastScanResult = null;
 let eachImageB64   = null;
+let eachStream     = null;
+let eachCamRunning = false;
+let eachCaptured   = false;
 
 function switchEachTab(tab){
   ['scan','history'].forEach(t=>{
@@ -1230,29 +1263,147 @@ function switchEachTab(tab){
       .classList.toggle('active', t===tab);
   });
   if(tab==='history') loadEachHistory();
+  if(tab==='scan') stopEachCamera();
 }
 window.switchEachTab = switchEachTab;
 
-function eachLoadImage(file){
-  if(!file) return;
-  const url = URL.createObjectURL(file);
-  eachPreviewImg.src = url;
-  eachPreviewWrap.style.display = 'block';
-  eachResultWrap.style.display  = 'none';
+/* Camera controls */
+async function startEachCamera(){
+  try{
+    eachStream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280}},audio:false});
+    eachVideo.srcObject = eachStream;
+    await eachVideo.play();
+    eachCamRunning = true;
+    eachCaptured = false;
+    eachPlaceholder.style.display = 'none';
+    eachVideo.style.display = 'block';
+    eachCanvas.style.display = 'none';
+    eachResultWrap.style.display = 'none';
+    eachCameraControls.style.display = 'flex';
+    eachCapturedControls.style.display = 'none';
+    eachUploadControls.style.display = 'none';
+    btnEachStartCam.disabled = true;
+    btnEachStopCam.disabled = false;
+    btnEachCaptureFrame.disabled = false;
+    eachVideoLoop();
+  }catch(err){
+    toast('Camera error: '+err.message,'error');
+  }
+}
+
+function stopEachCamera(){
+  eachCamRunning = false;
+  if(eachStream){
+    eachStream.getTracks().forEach(t=>t.stop());
+    eachStream = null;
+  }
+  eachVideo.srcObject = null;
+  eachPlaceholder.style.display = 'flex';
+  eachVideo.style.display = 'none';
+  eachCanvas.style.display = 'none';
+  btnEachStartCam.disabled = false;
+  btnEachStopCam.disabled = true;
+  btnEachCaptureFrame.disabled = true;
+}
+
+let eachRafId = null;
+function eachVideoLoop(){
+  if(!eachCamRunning) return;
+  if(eachVideo.videoWidth>0){
+    if(eachCanvas.width!==eachVideo.videoWidth||eachCanvas.height!==eachVideo.videoHeight){
+      eachCanvas.width = eachVideo.videoWidth;
+      eachCanvas.height = eachVideo.videoHeight;
+    }
+    eachCtx.drawImage(eachVideo,0,0);
+  }
+  eachRafId = requestAnimationFrame(eachVideoLoop);
+}
+
+function captureEachFrame(){
+  if(!eachCamRunning) return;
+  eachCanvas.width = eachVideo.videoWidth;
+  eachCanvas.height = eachVideo.videoHeight;
+  eachCtx.drawImage(eachVideo,0,0);
+  eachImageB64 = eachCanvas.toDataURL('image/jpeg',0.85).split(',')[1];
+  eachCaptured = true;
+  stopEachCamera();
+  eachVideo.style.display = 'none';
+  eachCanvas.style.display = 'block';
+  eachPlaceholder.style.display = 'none';
+  eachCameraControls.style.display = 'none';
+  eachCapturedControls.style.display = 'flex';
+  eachUploadControls.style.display = 'none';
+  eachResultWrap.style.display = 'none';
+  btnEachScan.disabled = false;
   btnEachSave.disabled = true;
   lastScanResult = null;
+}
+
+function retakeEach(){
+  eachCaptured = false;
+  eachImageB64 = null;
+  eachCtx.clearRect(0,0,eachCanvas.width,eachCanvas.height);
+  eachResultWrap.style.display = 'none';
+  startEachCamera();
+}
+
+function showUploadMode(){
+  stopEachCamera();
+  eachVideo.style.display = 'none';
+  eachCanvas.style.display = 'none';
+  eachPlaceholder.style.display = 'flex';
+  eachCameraControls.style.display = 'none';
+  eachCapturedControls.style.display = 'none';
+  eachUploadControls.style.display = 'flex';
+  eachResultWrap.style.display = 'none';
+}
+
+function backToCamera(){
+  eachUploadControls.style.display = 'none';
+  eachCameraControls.style.display = 'flex';
+  eachPlaceholder.style.display = 'flex';
+}
+
+function eachLoadImage(file){
+  if(!file) return;
   const fr = new FileReader();
-  fr.onload = e => { eachImageB64 = e.target.result.split(',')[1]; };
+  fr.onload = e=>{
+    eachImageB64 = e.target.result.split(',')[1];
+    eachCaptured = true;
+    const img = new Image();
+    img.onload = ()=>{
+      eachCanvas.width = img.width;
+      eachCanvas.height = img.height;
+      eachCtx.drawImage(img,0,0);
+      eachVideo.style.display = 'none';
+      eachCanvas.style.display = 'block';
+      eachPlaceholder.style.display = 'none';
+      eachCameraControls.style.display = 'none';
+      eachCapturedControls.style.display = 'flex';
+      eachUploadControls.style.display = 'none';
+      eachResultWrap.style.display = 'none';
+      btnEachScan.disabled = false;
+      btnEachSave.disabled = true;
+      lastScanResult = null;
+    };
+    img.src = e.target.result;
+  };
   fr.readAsDataURL(file);
 }
 
-btnEachCapture.addEventListener('click', ()=> eachCaptureInput.click());
+btnEachStartCam.addEventListener('click', startEachCamera);
+btnEachStopCam.addEventListener('click', stopEachCamera);
+btnEachCaptureFrame.addEventListener('click', captureEachFrame);
+btnEachDirectUpload.addEventListener('click', ()=> eachUploadInput.click());
+btnEachRetake.addEventListener('click', retakeEach);
 btnEachUploadTrig.addEventListener('click', ()=> eachUploadInput.click());
-eachCaptureInput.addEventListener('change', ()=>{ eachLoadImage(eachCaptureInput.files[0]); eachCaptureInput.value=''; });
-eachUploadInput.addEventListener('change',  ()=>{ eachLoadImage(eachUploadInput.files[0]);  eachUploadInput.value=''; });
+btnEachBackToCam.addEventListener('click', backToCamera);
+eachUploadInput.addEventListener('change', ()=>{ eachLoadImage(eachUploadInput.files[0]); eachUploadInput.value=''; });
 
 btnEachScan.addEventListener('click', async()=>{
-  if(!eachImageB64){ toast('Load an image first','info'); return; }
+  if(!eachImageB64){ toast('Capture or load an image first','info'); return; }
+  eachResultOverlay.style.display = 'flex';
   eachSpinner.style.display    = 'flex';
   eachResultWrap.style.display = 'none';
   btnEachScan.disabled = true;
@@ -1272,6 +1423,11 @@ btnEachScan.addEventListener('click', async()=>{
     eachSpinner.style.display = 'none';
     btnEachScan.disabled = false;
   }
+});
+
+btnEachBackToCapture.addEventListener('click', ()=>{
+  eachResultOverlay.style.display = 'none';
+  eachResultWrap.style.display = 'none';
 });
 
 function blobToBase64(blob){
@@ -1301,9 +1457,13 @@ const GROUP_COLORS = [
 
 function renderEachResults(data){
   if(!data.total){
+    eachResultOverlay.style.display = 'none';
     eachResultWrap.style.display = 'none';
     return;
   }
+
+  eachResultOverlay.style.display = 'flex';
+  eachSpinner.style.display = 'none';
 
   data.groups.forEach((grp,i)=>{ grp.color = GROUP_COLORS[i % GROUP_COLORS.length]; });
 

@@ -630,8 +630,12 @@ def annotate_image(img_bytes: bytes, items: list, color_map: dict) -> str:
         cx = int(sum(p[0] for p in poly) / len(poly))
         cy = int(sum(p[1] for p in poly) / len(poly))
 
-        disp   = item.get("expiry_display", "") or expiry or "No Exp"
-        tick   = "✓ " + disp
+        disp   = item.get("expiry_display", "") or expiry or ""
+        # Use simple checkmark character that's more universally supported
+        if disp:
+            tick = "OK " + disp
+        else:
+            tick = "OK"
         tscale = max(0.4, min(base_scale, box_w / max(cv2.getTextSize(tick, font, base_scale, 1)[0][0], 1) * 0.85))
         thick  = max(1, int(tscale * 1.6))
 
